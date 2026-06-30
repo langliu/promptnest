@@ -1,0 +1,35 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 32 32" fill="none">
+  <rect width="32" height="32" rx="8" fill="#0a0a0f"/>
+  <g transform="translate(4 4)">
+    <defs>
+      <linearGradient id="nest-glow" x1="12" y1="4" x2="12" y2="20">
+        <stop offset="0%" stop-color="#ffffff" stop-opacity="1"/>
+        <stop offset="100%" stop-color="#ffffff" stop-opacity="0.55"/>
+      </linearGradient>
+    </defs>
+    <path
+      d="M12 5.25 13.1 8.1 16.2 8.45 13.85 10.45 14.45 13.5 12 12.1 9.55 13.5 10.15 10.45 7.8 8.45 10.9 8.1 12 5.25Z"
+      fill="#ffffff"
+    />
+    <path
+      d="M4 16.25c2.35-4.35 5.15-6.25 8-6.25s5.65 1.9 8 6.25"
+      stroke="url(#nest-glow)"
+      stroke-width="1.55"
+      stroke-linecap="round"
+    />
+    <path
+      d="M6.75 15.1c1.55-2.75 3.45-4.1 5.25-4.1s3.7 1.35 5.25 4.1"
+      stroke="#ffffff"
+      stroke-width="1.35"
+      stroke-linecap="round"
+      opacity="0.7"
+    />
+    <path
+      d="M9.25 14.15c1-1.55 2.1-2.35 2.75-2.35s1.75 0.8 2.75 2.35"
+      stroke="#ffffff"
+      stroke-width="1.2"
+      stroke-linecap="round"
+      opacity="0.45"
+    />
+  </g>
+</svg>

@@ -1,0 +1,16 @@
+name = "promptnest"
+main = "@tanstack/react-start/server-entry"
+compatibility_date = "2026-06-20"
+compatibility_flags = ["nodejs_compat"]
+
+[[d1_databases]]
+binding = "DB"
+database_name = "promptnest-db"
+# 本地开发用固定 UUID，部署前请运行 `pnpm wrangler d1 create promptnest-db` 替换为真实 ID
+database_id = "b121389b-040d-43b7-b749-b6012aaf3d55"
+migrations_dir = "drizzle/migrations"
+
+[[r2_buckets]]
+binding = "IMAGES"
+bucket_name = "promptnest-images"
+preview_bucket_name = "promptnest-images-preview"
