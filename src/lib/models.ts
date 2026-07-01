@@ -21,6 +21,16 @@ const modelIds = PROMPT_MODELS.map((model) => model.id)
 
 export const DEFAULT_MODEL_ID = PROMPT_MODELS[0].id
 
+export const MODEL_SELECT_ITEMS = PROMPT_MODELS.map((model) => ({
+  value: model.id,
+  label: model.label,
+}))
+
+export const MODEL_FILTER_SELECT_ITEMS = [
+  { value: 'all', label: '全部模型' },
+  ...MODEL_SELECT_ITEMS,
+] as const
+
 export const modelIdSchema = z.enum(
   modelIds as [PromptModelId, ...PromptModelId[]],
   { message: '请选择有效的模型' },

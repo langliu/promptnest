@@ -25,7 +25,10 @@ async function initSchema(d1: D1Database) {
     )
     .first<{ name: string }>()
 
-  if (table) return
+  if (table) {
+    await ensureDraftColumn(d1)
+    return
+  }
 
   await d1.batch([
     d1.prepare(`CREATE TABLE IF NOT EXISTS prompt_images (
@@ -43,10 +46,26 @@ async function initSchema(d1: D1Database) {
       model text NOT NULL,
       parameters text,
       tags text,
+      draft integer DEFAULT 1 NOT NULL,
       created_at integer NOT NULL,
       updated_at integer NOT NULL
     )`),
   ])
+}
+
+async function ensureDraftColumn(d1: D1Database) {
+  const columns = await d1
+    .prepare('PRAGMA table_info(prompts)')
+    .all<{ name: string }>()
+
+  const hasDraft = columns.results?.some((column) => column.name === 'draft')
+  if (hasDraft) return
+
+  await d1
+    .prepare(
+      'ALTER TABLE prompts ADD COLUMN draft integer NOT NULL DEFAULT 0',
+    )
+    .run()
 }
 
 export function formatDbError(error: unknown): string {

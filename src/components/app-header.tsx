@@ -7,7 +7,7 @@ import {
 } from "@tanstack/react-router";
 import { useServerFn } from "@tanstack/react-start";
 import { LogOut } from "lucide-react";
-import { AppLogoMark } from "@/components/app-logo";
+import { AppLogo } from "@/components/app-logo";
 import { logoutFn } from "@/lib/auth.functions";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
@@ -53,44 +53,39 @@ export function AppHeader() {
 
   return (
     <header className="pointer-events-none fixed inset-x-0 top-0 z-50">
-      <div
-        aria-hidden="true"
-        className="pointer-events-none absolute inset-x-0 top-0 h-24 bg-linear-to-b from-black/55 to-transparent"
-      />
-
-      <div className="relative flex justify-center px-5 pt-5 sm:px-8 sm:pt-6">
+      <div className="relative flex justify-center px-3 pt-4 sm:px-5">
         <nav
           className={cn(
-            "pointer-events-auto relative isolate flex h-12 w-full max-w-7xl",
-            "items-center justify-between px-4 sm:px-4",
-            "rounded-xl",
-            "shadow-[0_0_0_1px_rgba(255,255,255,0.14),0_20px_50px_-16px_rgba(0,0,0,0.8)]",
+            "pointer-events-auto relative isolate flex h-12 w-full max-w-160",
+            "items-center justify-between gap-3 px-3",
+            "rounded-[14px]",
+            "shadow-[0_18px_44px_-24px_rgba(0,0,0,0.78)]",
           )}
         >
           <div
             aria-hidden="true"
-            className="absolute inset-0 rounded-xl bg-white/[0.07] backdrop-blur-3xl backdrop-saturate-150"
+            className="absolute inset-0 rounded-[14px] bg-[#17111f]/82 backdrop-blur-2xl backdrop-saturate-150"
           />
           <div
             aria-hidden="true"
             className={cn(
-              "absolute inset-0 rounded-xl border border-white/20",
-              "shadow-[inset_0_1px_0_0_rgba(255,255,255,0.18),inset_0_-12px_24px_-12px_rgba(0,0,0,0.35)]",
+              "absolute inset-0 rounded-[14px] border border-white/[0.08]",
+              "shadow-[inset_0_1px_0_0_rgba(255,255,255,0.06),inset_0_-10px_22px_-16px_rgba(0,0,0,0.38)]",
             )}
           />
 
-          <div className="relative z-10 flex min-w-0 items-center">
+          <div className="relative z-10 flex min-w-0 items-center gap-5">
             <Link
               to="/"
-              className="flex items-center gap-2.5 rounded-lg py-1.5 pr-3 pl-2 text-white transition-opacity hover:opacity-90"
+              className="flex shrink-0 items-center gap-2 rounded-lg py-1.5 text-white transition-opacity hover:opacity-90"
             >
-              <AppLogoMark />
-              <span className="text-[0.9375rem] font-medium tracking-tight">
+              <AppLogo className="size-5" />
+              <span className="text-[0.9375rem] font-semibold tracking-tight">
                 PromptNest
               </span>
             </Link>
 
-            <div className="ml-1 hidden items-center sm:flex">
+            <div className="flex items-center">
               <NavLink to="/" exact>
                 首页
               </NavLink>
@@ -99,18 +94,7 @@ export function AppHeader() {
           </div>
 
           <div className="relative z-10 flex items-center gap-2">
-            <Button
-              render={<Link to="/prompts/new" />}
-              nativeButton={false}
-              className={cn(
-                "h-9 shrink-0 rounded-lg border-0 bg-white px-5",
-                "text-sm font-medium text-black shadow-[0_2px_10px_rgba(0,0,0,0.3)]",
-                "hover:bg-white/92 active:bg-white/85",
-              )}
-            >
-              新建 Prompt
-            </Button>
-            {auth.isAuthenticated && (
+            {auth.isAuthenticated ? (
               <Button
                 type="button"
                 variant="ghost"
@@ -120,6 +104,14 @@ export function AppHeader() {
                 aria-label="退出登录"
               >
                 <LogOut className="size-4" />
+              </Button>
+            ) : (
+              <Button
+                render={<Link to="/login" />}
+                nativeButton={false}
+                className="h-8 rounded-[10px] bg-white px-4 text-sm font-medium text-black shadow-none hover:bg-white/90"
+              >
+                登录
               </Button>
             )}
           </div>

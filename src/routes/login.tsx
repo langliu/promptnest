@@ -15,6 +15,8 @@ import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { cn } from '@/lib/utils'
 
+const DEFAULT_LOGIN_REDIRECT = '/admin'
+
 const loginSearchSchema = z.object({
   redirect: z.string().optional(),
 })
@@ -23,7 +25,7 @@ export const Route = createFileRoute('/login')({
   validateSearch: loginSearchSchema,
   beforeLoad: ({ context, search }) => {
     if (context.auth.isAuthenticated) {
-      throw redirect({ to: search.redirect ?? '/' })
+      throw redirect({ to: search.redirect ?? DEFAULT_LOGIN_REDIRECT })
     }
   },
   component: LoginPage,
@@ -46,7 +48,7 @@ function LoginPage() {
     try {
       await login({ data: { password } })
       await router.invalidate()
-      await navigate({ to: redirectTo ?? '/' })
+      await navigate({ to: redirectTo ?? DEFAULT_LOGIN_REDIRECT })
     } catch (err) {
       setError(err instanceof Error ? err.message : '登录失败，请重试')
     } finally {

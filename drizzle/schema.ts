@@ -8,6 +8,7 @@ export const prompts = sqliteTable('prompts', {
   model: text('model').notNull(),
   parameters: text('parameters'), // JSON string
   tags: text('tags'),             // comma separated
+  draft: integer('draft', { mode: 'boolean' }).notNull().default(true),
   created_at: integer('created_at', { mode: 'timestamp' }).notNull(),
   updated_at: integer('updated_at', { mode: 'timestamp' }).notNull(),
 });

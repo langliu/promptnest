@@ -1,0 +1,1 @@
+ALTER TABLE `prompts` ADD `draft` integer DEFAULT 0 NOT NULL;

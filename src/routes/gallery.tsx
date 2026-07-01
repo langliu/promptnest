@@ -1,5 +1,5 @@
-import { createFileRoute, Link } from '@tanstack/react-router'
-import { ImageIcon, Plus } from 'lucide-react'
+import { createFileRoute } from '@tanstack/react-router'
+import { ImageIcon } from 'lucide-react'
 import { useState } from 'react'
 import {
   PromptPreviewDialog,
@@ -8,7 +8,6 @@ import {
 import { GalleryCardTags } from '@/components/gallery-card-tags'
 import { getAllPromptsFn } from '@/lib/prompts.functions'
 import { Badge } from '@/components/ui/badge'
-import { Button } from '@/components/ui/button'
 import { Card, CardContent } from '@/components/ui/card'
 
 export const Route = createFileRoute('/gallery')({
@@ -26,37 +25,18 @@ function GalleryPage() {
   return (
     <div className="p-8">
       <div className="mx-auto max-w-7xl">
-        <div className="mb-8 flex items-center justify-between">
-          <div>
-            <h1 className="text-4xl font-bold tracking-tight">画廊</h1>
-            <p className="mt-2 text-muted-foreground">
-              浏览和管理你保存的所有 Prompt
-            </p>
-          </div>
-          <Button
-            render={<Link to="/prompts/new" />}
-            nativeButton={false}
-            size="lg"
-          >
-            <Plus data-icon="inline-start" />
-            新建 Prompt
-          </Button>
+        <div className="mb-8">
+          <h1 className="text-4xl font-bold tracking-tight">画廊</h1>
+          <p className="mt-2 text-muted-foreground">
+            浏览和管理你保存的所有 Prompt
+          </p>
         </div>
 
         {prompts.length === 0 ? (
           <Card className="py-16 text-center">
             <CardContent className="flex flex-col items-center gap-4">
-              <p className="text-muted-foreground">
-                还没有 Prompt，创建第一个开始收集吧
-              </p>
-              <Button
-                render={<Link to="/prompts/new" />}
-                nativeButton={false}
-                variant="outline"
-              >
-                <Plus data-icon="inline-start" />
-                创建第一个 Prompt
-              </Button>
+              <ImageIcon className="size-10 text-muted-foreground" />
+              <p className="text-muted-foreground">暂无已发布的 Prompt</p>
             </CardContent>
           </Card>
         ) : (

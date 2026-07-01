@@ -14,7 +14,11 @@ import { Route as GalleryRouteImport } from './routes/gallery'
 import { Route as AuthenticatedRouteImport } from './routes/_authenticated'
 import { Route as IndexRouteImport } from './routes/index'
 import { Route as ApiImagesRouteImport } from './routes/api/images'
-import { Route as AuthenticatedPromptsNewRouteImport } from './routes/_authenticated/prompts/new'
+import { Route as AuthenticatedAdminRouteImport } from './routes/_authenticated/admin'
+import { Route as AuthenticatedAdminIndexRouteImport } from './routes/_authenticated/admin/index'
+import { Route as AuthenticatedAdminPromptsIndexRouteImport } from './routes/_authenticated/admin/prompts/index'
+import { Route as AuthenticatedAdminPromptsNewRouteImport } from './routes/_authenticated/admin/prompts/new'
+import { Route as AuthenticatedAdminPromptsIdEditRouteImport } from './routes/_authenticated/admin/prompts/$id/edit'
 
 const LoginRoute = LoginRouteImport.update({
   id: '/login',
@@ -40,25 +44,55 @@ const ApiImagesRoute = ApiImagesRouteImport.update({
   path: '/api/images',
   getParentRoute: () => rootRouteImport,
 } as any)
-const AuthenticatedPromptsNewRoute = AuthenticatedPromptsNewRouteImport.update({
-  id: '/prompts/new',
-  path: '/prompts/new',
+const AuthenticatedAdminRoute = AuthenticatedAdminRouteImport.update({
+  id: '/admin',
+  path: '/admin',
   getParentRoute: () => AuthenticatedRoute,
 } as any)
+const AuthenticatedAdminIndexRoute = AuthenticatedAdminIndexRouteImport.update({
+  id: '/',
+  path: '/',
+  getParentRoute: () => AuthenticatedAdminRoute,
+} as any)
+const AuthenticatedAdminPromptsIndexRoute =
+  AuthenticatedAdminPromptsIndexRouteImport.update({
+    id: '/prompts/',
+    path: '/prompts/',
+    getParentRoute: () => AuthenticatedAdminRoute,
+  } as any)
+const AuthenticatedAdminPromptsNewRoute =
+  AuthenticatedAdminPromptsNewRouteImport.update({
+    id: '/prompts/new',
+    path: '/prompts/new',
+    getParentRoute: () => AuthenticatedAdminRoute,
+  } as any)
+const AuthenticatedAdminPromptsIdEditRoute =
+  AuthenticatedAdminPromptsIdEditRouteImport.update({
+    id: '/prompts/$id/edit',
+    path: '/prompts/$id/edit',
+    getParentRoute: () => AuthenticatedAdminRoute,
+  } as any)
 
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
   '/gallery': typeof GalleryRoute
   '/login': typeof LoginRoute
+  '/admin': typeof AuthenticatedAdminRouteWithChildren
   '/api/images': typeof ApiImagesRoute
-  '/prompts/new': typeof AuthenticatedPromptsNewRoute
+  '/admin/': typeof AuthenticatedAdminIndexRoute
+  '/admin/prompts/new': typeof AuthenticatedAdminPromptsNewRoute
+  '/admin/prompts/': typeof AuthenticatedAdminPromptsIndexRoute
+  '/admin/prompts/$id/edit': typeof AuthenticatedAdminPromptsIdEditRoute
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
   '/gallery': typeof GalleryRoute
   '/login': typeof LoginRoute
   '/api/images': typeof ApiImagesRoute
-  '/prompts/new': typeof AuthenticatedPromptsNewRoute
+  '/admin': typeof AuthenticatedAdminIndexRoute
+  '/admin/prompts/new': typeof AuthenticatedAdminPromptsNewRoute
+  '/admin/prompts': typeof AuthenticatedAdminPromptsIndexRoute
+  '/admin/prompts/$id/edit': typeof AuthenticatedAdminPromptsIdEditRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
@@ -66,22 +100,47 @@ export interface FileRoutesById {
   '/_authenticated': typeof AuthenticatedRouteWithChildren
   '/gallery': typeof GalleryRoute
   '/login': typeof LoginRoute
+  '/_authenticated/admin': typeof AuthenticatedAdminRouteWithChildren
   '/api/images': typeof ApiImagesRoute
-  '/_authenticated/prompts/new': typeof AuthenticatedPromptsNewRoute
+  '/_authenticated/admin/': typeof AuthenticatedAdminIndexRoute
+  '/_authenticated/admin/prompts/new': typeof AuthenticatedAdminPromptsNewRoute
+  '/_authenticated/admin/prompts/': typeof AuthenticatedAdminPromptsIndexRoute
+  '/_authenticated/admin/prompts/$id/edit': typeof AuthenticatedAdminPromptsIdEditRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
-  fullPaths: '/' | '/gallery' | '/login' | '/api/images' | '/prompts/new'
+  fullPaths:
+    | '/'
+    | '/gallery'
+    | '/login'
+    | '/admin'
+    | '/api/images'
+    | '/admin/'
+    | '/admin/prompts/new'
+    | '/admin/prompts/'
+    | '/admin/prompts/$id/edit'
   fileRoutesByTo: FileRoutesByTo
-  to: '/' | '/gallery' | '/login' | '/api/images' | '/prompts/new'
+  to:
+    | '/'
+    | '/gallery'
+    | '/login'
+    | '/api/images'
+    | '/admin'
+    | '/admin/prompts/new'
+    | '/admin/prompts'
+    | '/admin/prompts/$id/edit'
   id:
     | '__root__'
     | '/'
     | '/_authenticated'
     | '/gallery'
     | '/login'
+    | '/_authenticated/admin'
     | '/api/images'
-    | '/_authenticated/prompts/new'
+    | '/_authenticated/admin/'
+    | '/_authenticated/admin/prompts/new'
+    | '/_authenticated/admin/prompts/'
+    | '/_authenticated/admin/prompts/$id/edit'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
@@ -129,22 +188,67 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof ApiImagesRouteImport
       parentRoute: typeof rootRouteImport
     }
-    '/_authenticated/prompts/new': {
-      id: '/_authenticated/prompts/new'
-      path: '/prompts/new'
-      fullPath: '/prompts/new'
-      preLoaderRoute: typeof AuthenticatedPromptsNewRouteImport
+    '/_authenticated/admin': {
+      id: '/_authenticated/admin'
+      path: '/admin'
+      fullPath: '/admin'
+      preLoaderRoute: typeof AuthenticatedAdminRouteImport
       parentRoute: typeof AuthenticatedRoute
+    }
+    '/_authenticated/admin/': {
+      id: '/_authenticated/admin/'
+      path: '/'
+      fullPath: '/admin/'
+      preLoaderRoute: typeof AuthenticatedAdminIndexRouteImport
+      parentRoute: typeof AuthenticatedAdminRoute
+    }
+    '/_authenticated/admin/prompts/': {
+      id: '/_authenticated/admin/prompts/'
+      path: '/prompts'
+      fullPath: '/admin/prompts/'
+      preLoaderRoute: typeof AuthenticatedAdminPromptsIndexRouteImport
+      parentRoute: typeof AuthenticatedAdminRoute
+    }
+    '/_authenticated/admin/prompts/new': {
+      id: '/_authenticated/admin/prompts/new'
+      path: '/prompts/new'
+      fullPath: '/admin/prompts/new'
+      preLoaderRoute: typeof AuthenticatedAdminPromptsNewRouteImport
+      parentRoute: typeof AuthenticatedAdminRoute
+    }
+    '/_authenticated/admin/prompts/$id/edit': {
+      id: '/_authenticated/admin/prompts/$id/edit'
+      path: '/prompts/$id/edit'
+      fullPath: '/admin/prompts/$id/edit'
+      preLoaderRoute: typeof AuthenticatedAdminPromptsIdEditRouteImport
+      parentRoute: typeof AuthenticatedAdminRoute
     }
   }
 }
 
+interface AuthenticatedAdminRouteChildren {
+  AuthenticatedAdminIndexRoute: typeof AuthenticatedAdminIndexRoute
+  AuthenticatedAdminPromptsNewRoute: typeof AuthenticatedAdminPromptsNewRoute
+  AuthenticatedAdminPromptsIndexRoute: typeof AuthenticatedAdminPromptsIndexRoute
+  AuthenticatedAdminPromptsIdEditRoute: typeof AuthenticatedAdminPromptsIdEditRoute
+}
+
+const AuthenticatedAdminRouteChildren: AuthenticatedAdminRouteChildren = {
+  AuthenticatedAdminIndexRoute: AuthenticatedAdminIndexRoute,
+  AuthenticatedAdminPromptsNewRoute: AuthenticatedAdminPromptsNewRoute,
+  AuthenticatedAdminPromptsIndexRoute: AuthenticatedAdminPromptsIndexRoute,
+  AuthenticatedAdminPromptsIdEditRoute: AuthenticatedAdminPromptsIdEditRoute,
+}
+
+const AuthenticatedAdminRouteWithChildren =
+  AuthenticatedAdminRoute._addFileChildren(AuthenticatedAdminRouteChildren)
+
 interface AuthenticatedRouteChildren {
-  AuthenticatedPromptsNewRoute: typeof AuthenticatedPromptsNewRoute
+  AuthenticatedAdminRoute: typeof AuthenticatedAdminRouteWithChildren
 }
 
 const AuthenticatedRouteChildren: AuthenticatedRouteChildren = {
-  AuthenticatedPromptsNewRoute: AuthenticatedPromptsNewRoute,
+  AuthenticatedAdminRoute: AuthenticatedAdminRouteWithChildren,
 }
 
 const AuthenticatedRouteWithChildren = AuthenticatedRoute._addFileChildren(

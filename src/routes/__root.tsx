@@ -50,11 +50,15 @@ function RootComponent() {
     select: (state) => state.location.pathname,
   });
   const isLoginPage = pathname === "/login";
+  const isAdminPage = pathname.startsWith("/admin");
+  const isHomePage = pathname === "/";
 
   return (
     <>
-      {!isLoginPage && <AppHeader />}
-      <main className={isLoginPage ? undefined : "pt-20"}>
+      {!isLoginPage && !isAdminPage && <AppHeader />}
+      <main
+        className={isLoginPage || isAdminPage || isHomePage ? undefined : "pt-20"}
+      >
         <Outlet />
       </main>
     </>
