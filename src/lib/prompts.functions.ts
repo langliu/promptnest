@@ -1,5 +1,6 @@
 import { createServerFn } from '@tanstack/react-start'
-import { drizzle } from 'drizzle-orm/d1'
+import { authMiddleware } from '@/lib/auth.middleware'
+import { formatDbError, getDb } from '@/lib/db'
 import { desc, eq, inArray } from 'drizzle-orm'
 import { z } from 'zod'
 import {
@@ -10,12 +11,6 @@ import {
 } from '@/lib/images'
 import { modelIdSchema } from '@/lib/models'
 import { prompt_images, prompts } from '../../drizzle/schema'
-
-async function getDb() {
-  const { env } = await import('cloudflare:workers')
-  if (!env.DB) return null
-  return drizzle(env.DB)
-}
 
 async function getR2() {
   const { env } = await import('cloudflare:workers')
@@ -143,6 +138,7 @@ export const getPromptByIdFn = createServerFn({ method: 'GET' })
   })
 
 export const createPromptFn = createServerFn({ method: 'POST' })
+  .middleware([authMiddleware])
   .validator((data) => {
     if (!(data instanceof FormData)) {
       throw new Error('提交数据格式错误')
@@ -150,59 +146,63 @@ export const createPromptFn = createServerFn({ method: 'POST' })
     return parseCreatePromptFormData(data)
   })
   .handler(async ({ data }) => {
-    const db = await getDb()
-    const bucket = await getR2()
-
-    if (!db) {
-      throw new Error('数据库不可用，请确认本地 D1 已启动')
-    }
-    if (data.imageFiles.length > 0 && !bucket) {
-      throw new Error('图片存储不可用，请确认本地 R2 已启动')
-    }
-
-    const now = new Date()
-    const uploadedKeys: string[] = []
-
-    const result = await db
-      .insert(prompts)
-      .values({
-        title: data.title.trim(),
-        prompt: data.prompt.trim(),
-        negative_prompt: data.negative_prompt?.trim() || null,
-        model: data.model,
-        tags: data.tags?.trim() || null,
-        created_at: now,
-        updated_at: now,
-      })
-      .returning({ id: prompts.id })
-
-    const created = result[0]
-    if (!created) {
-      throw new Error('保存失败，请重试')
-    }
-
     try {
-      for (const [index, file] of data.imageFiles.entries()) {
-        const key = buildPromptImageKey(created.id, file.name)
-        const buffer = await file.arrayBuffer()
+      const db = await getDb()
+      const bucket = await getR2()
 
-        await bucket!.put(key, buffer, {
-          httpMetadata: { contentType: file.type },
-        })
-        uploadedKeys.push(key)
-
-        await db.insert(prompt_images).values({
-          prompt_id: created.id,
-          r2_key: key,
-          sort_order: index,
-          created_at: now,
-        })
+      if (!db) {
+        throw new Error('数据库不可用，请确认本地 D1 已启动')
       }
-    } catch (error) {
-      await Promise.all(uploadedKeys.map((key) => bucket!.delete(key)))
-      await db.delete(prompts).where(eq(prompts.id, created.id))
-      throw error instanceof Error ? error : new Error('图片上传失败')
-    }
+      if (data.imageFiles.length > 0 && !bucket) {
+        throw new Error('图片存储不可用，请确认本地 R2 已启动')
+      }
 
-    return { id: created.id, imageCount: data.imageFiles.length }
+      const now = new Date()
+      const uploadedKeys: string[] = []
+
+      const result = await db
+        .insert(prompts)
+        .values({
+          title: data.title.trim(),
+          prompt: data.prompt.trim(),
+          negative_prompt: data.negative_prompt?.trim() || null,
+          model: data.model,
+          tags: data.tags?.trim() || null,
+          created_at: now,
+          updated_at: now,
+        })
+        .returning({ id: prompts.id })
+
+      const created = result[0]
+      if (!created) {
+        throw new Error('保存失败，请重试')
+      }
+
+      try {
+        for (const [index, file] of data.imageFiles.entries()) {
+          const key = buildPromptImageKey(created.id, file.name)
+          const buffer = await file.arrayBuffer()
+
+          await bucket!.put(key, buffer, {
+            httpMetadata: { contentType: file.type },
+          })
+          uploadedKeys.push(key)
+
+          await db.insert(prompt_images).values({
+            prompt_id: created.id,
+            r2_key: key,
+            sort_order: index,
+            created_at: now,
+          })
+        }
+      } catch (error) {
+        await Promise.all(uploadedKeys.map((key) => bucket!.delete(key)))
+        await db.delete(prompts).where(eq(prompts.id, created.id))
+        throw error instanceof Error ? error : new Error('图片上传失败')
+      }
+
+      return { id: created.id, imageCount: data.imageFiles.length }
+    } catch (error) {
+      throw new Error(formatDbError(error))
+    }
   })

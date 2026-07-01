@@ -1,11 +1,26 @@
-import { HeadContent, Scripts, createRootRoute } from "@tanstack/react-router";
+import {
+  HeadContent,
+  Outlet,
+  Scripts,
+  createRootRouteWithContext,
+  useRouterState,
+} from "@tanstack/react-router";
 import { TanStackRouterDevtoolsPanel } from "@tanstack/react-router-devtools";
 import { TanStackDevtools } from "@tanstack/react-devtools";
 import { AppHeader } from "@/components/app-header";
+import { getAuthFn, type AuthState } from "@/lib/auth.functions";
 
 import appCss from "../styles.css?url";
 
-export const Route = createRootRoute({
+export interface RouterContext {
+  auth: AuthState;
+}
+
+export const Route = createRootRouteWithContext<RouterContext>()({
+  beforeLoad: async () => {
+    const auth = await getAuthFn();
+    return { auth };
+  },
   head: () => ({
     meta: [
       { charSet: "utf-8" },
@@ -26,8 +41,25 @@ export const Route = createRootRoute({
       { rel: "manifest", href: "/manifest.json" },
     ],
   }),
+  component: RootComponent,
   shellComponent: RootDocument,
 });
+
+function RootComponent() {
+  const pathname = useRouterState({
+    select: (state) => state.location.pathname,
+  });
+  const isLoginPage = pathname === "/login";
+
+  return (
+    <>
+      {!isLoginPage && <AppHeader />}
+      <main className={isLoginPage ? undefined : "pt-20"}>
+        <Outlet />
+      </main>
+    </>
+  );
+}
 
 function RootDocument({ children }: { children: React.ReactNode }) {
   return (
@@ -36,8 +68,7 @@ function RootDocument({ children }: { children: React.ReactNode }) {
         <HeadContent />
       </head>
       <body className="min-h-screen bg-background font-sans antialiased">
-        <AppHeader />
-        <main className="pt-20">{children}</main>
+        {children}
 
         <TanStackDevtools
           config={{ position: "bottom-right" }}

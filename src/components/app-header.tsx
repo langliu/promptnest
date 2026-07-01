@@ -1,5 +1,14 @@
-import { Link, useRouterState } from "@tanstack/react-router";
+import {
+  Link,
+  useNavigate,
+  useRouteContext,
+  useRouter,
+  useRouterState,
+} from "@tanstack/react-router";
+import { useServerFn } from "@tanstack/react-start";
+import { LogOut } from "lucide-react";
 import { AppLogoMark } from "@/components/app-logo";
+import { logoutFn } from "@/lib/auth.functions";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 
@@ -31,6 +40,17 @@ function NavLink({
 }
 
 export function AppHeader() {
+  const { auth } = useRouteContext({ from: "__root__" });
+  const navigate = useNavigate();
+  const router = useRouter();
+  const logout = useServerFn(logoutFn);
+
+  const handleLogout = async () => {
+    await logout();
+    await router.invalidate();
+    await navigate({ to: "/login" });
+  };
+
   return (
     <header className="pointer-events-none fixed inset-x-0 top-0 z-50">
       <div
@@ -78,17 +98,31 @@ export function AppHeader() {
             </div>
           </div>
 
-          <Button
-            render={<Link to="/prompts/new" />}
-            nativeButton={false}
-            className={cn(
-              "relative z-10 h-9 shrink-0 rounded-lg border-0 bg-white px-5",
-              "text-sm font-medium text-black shadow-[0_2px_10px_rgba(0,0,0,0.3)]",
-              "hover:bg-white/92 active:bg-white/85",
+          <div className="relative z-10 flex items-center gap-2">
+            <Button
+              render={<Link to="/prompts/new" />}
+              nativeButton={false}
+              className={cn(
+                "h-9 shrink-0 rounded-lg border-0 bg-white px-5",
+                "text-sm font-medium text-black shadow-[0_2px_10px_rgba(0,0,0,0.3)]",
+                "hover:bg-white/92 active:bg-white/85",
+              )}
+            >
+              新建 Prompt
+            </Button>
+            {auth.isAuthenticated && (
+              <Button
+                type="button"
+                variant="ghost"
+                size="icon-sm"
+                onClick={handleLogout}
+                className="text-white/55 hover:bg-white/10 hover:text-white"
+                aria-label="退出登录"
+              >
+                <LogOut className="size-4" />
+              </Button>
             )}
-          >
-            新建 Prompt
-          </Button>
+          </div>
         </nav>
       </div>
     </header>

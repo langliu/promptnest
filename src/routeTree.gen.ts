@@ -9,14 +9,25 @@
 // Additionally, you should also exclude this file from your linter and/or formatter to prevent it from being checked or modified.
 
 import { Route as rootRouteImport } from './routes/__root'
+import { Route as LoginRouteImport } from './routes/login'
 import { Route as GalleryRouteImport } from './routes/gallery'
+import { Route as AuthenticatedRouteImport } from './routes/_authenticated'
 import { Route as IndexRouteImport } from './routes/index'
-import { Route as PromptsNewRouteImport } from './routes/prompts/new'
 import { Route as ApiImagesRouteImport } from './routes/api/images'
+import { Route as AuthenticatedPromptsNewRouteImport } from './routes/_authenticated/prompts/new'
 
+const LoginRoute = LoginRouteImport.update({
+  id: '/login',
+  path: '/login',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const GalleryRoute = GalleryRouteImport.update({
   id: '/gallery',
   path: '/gallery',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const AuthenticatedRoute = AuthenticatedRouteImport.update({
+  id: '/_authenticated',
   getParentRoute: () => rootRouteImport,
 } as any)
 const IndexRoute = IndexRouteImport.update({
@@ -24,58 +35,84 @@ const IndexRoute = IndexRouteImport.update({
   path: '/',
   getParentRoute: () => rootRouteImport,
 } as any)
-const PromptsNewRoute = PromptsNewRouteImport.update({
-  id: '/prompts/new',
-  path: '/prompts/new',
-  getParentRoute: () => rootRouteImport,
-} as any)
 const ApiImagesRoute = ApiImagesRouteImport.update({
   id: '/api/images',
   path: '/api/images',
   getParentRoute: () => rootRouteImport,
 } as any)
+const AuthenticatedPromptsNewRoute = AuthenticatedPromptsNewRouteImport.update({
+  id: '/prompts/new',
+  path: '/prompts/new',
+  getParentRoute: () => AuthenticatedRoute,
+} as any)
 
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
   '/gallery': typeof GalleryRoute
+  '/login': typeof LoginRoute
   '/api/images': typeof ApiImagesRoute
-  '/prompts/new': typeof PromptsNewRoute
+  '/prompts/new': typeof AuthenticatedPromptsNewRoute
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
   '/gallery': typeof GalleryRoute
+  '/login': typeof LoginRoute
   '/api/images': typeof ApiImagesRoute
-  '/prompts/new': typeof PromptsNewRoute
+  '/prompts/new': typeof AuthenticatedPromptsNewRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
   '/': typeof IndexRoute
+  '/_authenticated': typeof AuthenticatedRouteWithChildren
   '/gallery': typeof GalleryRoute
+  '/login': typeof LoginRoute
   '/api/images': typeof ApiImagesRoute
-  '/prompts/new': typeof PromptsNewRoute
+  '/_authenticated/prompts/new': typeof AuthenticatedPromptsNewRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
-  fullPaths: '/' | '/gallery' | '/api/images' | '/prompts/new'
+  fullPaths: '/' | '/gallery' | '/login' | '/api/images' | '/prompts/new'
   fileRoutesByTo: FileRoutesByTo
-  to: '/' | '/gallery' | '/api/images' | '/prompts/new'
-  id: '__root__' | '/' | '/gallery' | '/api/images' | '/prompts/new'
+  to: '/' | '/gallery' | '/login' | '/api/images' | '/prompts/new'
+  id:
+    | '__root__'
+    | '/'
+    | '/_authenticated'
+    | '/gallery'
+    | '/login'
+    | '/api/images'
+    | '/_authenticated/prompts/new'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
+  AuthenticatedRoute: typeof AuthenticatedRouteWithChildren
   GalleryRoute: typeof GalleryRoute
+  LoginRoute: typeof LoginRoute
   ApiImagesRoute: typeof ApiImagesRoute
-  PromptsNewRoute: typeof PromptsNewRoute
 }
 
 declare module '@tanstack/react-router' {
   interface FileRoutesByPath {
+    '/login': {
+      id: '/login'
+      path: '/login'
+      fullPath: '/login'
+      preLoaderRoute: typeof LoginRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/gallery': {
       id: '/gallery'
       path: '/gallery'
       fullPath: '/gallery'
       preLoaderRoute: typeof GalleryRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/_authenticated': {
+      id: '/_authenticated'
+      path: ''
+      fullPath: '/'
+      preLoaderRoute: typeof AuthenticatedRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/': {
@@ -85,13 +122,6 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof IndexRouteImport
       parentRoute: typeof rootRouteImport
     }
-    '/prompts/new': {
-      id: '/prompts/new'
-      path: '/prompts/new'
-      fullPath: '/prompts/new'
-      preLoaderRoute: typeof PromptsNewRouteImport
-      parentRoute: typeof rootRouteImport
-    }
     '/api/images': {
       id: '/api/images'
       path: '/api/images'
@@ -99,14 +129,34 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof ApiImagesRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/_authenticated/prompts/new': {
+      id: '/_authenticated/prompts/new'
+      path: '/prompts/new'
+      fullPath: '/prompts/new'
+      preLoaderRoute: typeof AuthenticatedPromptsNewRouteImport
+      parentRoute: typeof AuthenticatedRoute
+    }
   }
 }
 
+interface AuthenticatedRouteChildren {
+  AuthenticatedPromptsNewRoute: typeof AuthenticatedPromptsNewRoute
+}
+
+const AuthenticatedRouteChildren: AuthenticatedRouteChildren = {
+  AuthenticatedPromptsNewRoute: AuthenticatedPromptsNewRoute,
+}
+
+const AuthenticatedRouteWithChildren = AuthenticatedRoute._addFileChildren(
+  AuthenticatedRouteChildren,
+)
+
 const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
+  AuthenticatedRoute: AuthenticatedRouteWithChildren,
   GalleryRoute: GalleryRoute,
+  LoginRoute: LoginRoute,
   ApiImagesRoute: ApiImagesRoute,
-  PromptsNewRoute: PromptsNewRoute,
 }
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)
