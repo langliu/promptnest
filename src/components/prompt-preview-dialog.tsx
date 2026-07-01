@@ -1,6 +1,7 @@
-import { ChevronLeft, ChevronRight, ImageIcon } from "lucide-react";
+import { Check, ChevronLeft, ChevronRight, Copy, ImageIcon } from "lucide-react";
 import { useEffect, useState } from "react";
 import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
 import {
   Dialog,
   DialogContent,
@@ -10,6 +11,20 @@ import { Separator } from "@/components/ui/separator";
 import { getModelLabel } from "@/lib/models";
 import { parsePromptTags } from "@/lib/prompt-tags";
 import { cn } from "@/lib/utils";
+
+export function formatPromptForCopy(
+  prompt: string,
+  negativePrompt: string | null,
+): string {
+  const positive = prompt.trim();
+  const negative = negativePrompt?.trim();
+
+  if (!negative) {
+    return positive;
+  }
+
+  return `${positive}\n\n负面提示词\n\n${negative}`;
+}
 
 export type GalleryPrompt = {
   id: number;
@@ -52,10 +67,28 @@ export function PromptPreviewDialog({
   onClose,
 }: PromptPreviewDialogProps) {
   const [activeIndex, setActiveIndex] = useState(0);
+  const [copied, setCopied] = useState(false);
 
   useEffect(() => {
     setActiveIndex(0);
+    setCopied(false);
   }, [prompt.id]);
+
+  useEffect(() => {
+    if (!copied) return;
+    const timer = window.setTimeout(() => setCopied(false), 2000);
+    return () => window.clearTimeout(timer);
+  }, [copied]);
+
+  const handleCopy = async () => {
+    const text = formatPromptForCopy(prompt.prompt, prompt.negative_prompt);
+    try {
+      await navigator.clipboard.writeText(text);
+      setCopied(true);
+    } catch {
+      setCopied(false);
+    }
+  };
 
   const images = prompt.images;
   const hasMultipleImages = images.length > 1;
@@ -82,11 +115,11 @@ export function PromptPreviewDialog({
         if (!nextOpen) onClose();
       }}
     >
-      <DialogContent className="h-[min(90vh,42rem)] max-h-[90vh] gap-0 overflow-hidden p-0 sm:max-w-5xl">
+      <DialogContent className="flex h-[min(90vh,42rem)] max-h-[90vh] flex-col gap-0 overflow-hidden p-0 sm:max-w-5xl">
         <DialogTitle className="sr-only">{prompt.title}</DialogTitle>
 
-        <div className="grid h-full grid-rows-[minmax(0,1fr)_minmax(0,1fr)] md:grid-cols-2 md:grid-rows-1">
-          <div className="relative flex h-full min-h-0 flex-col bg-muted">
+        <div className="grid min-h-0 flex-1 overflow-hidden grid-rows-[minmax(0,1fr)_minmax(0,1fr)] md:grid-cols-2 md:grid-rows-1">
+          <div className="relative flex min-h-0 flex-col bg-muted">
             <div className="relative min-h-0 flex-1 p-4">
               {images.length > 0 ? (
                 <div className="pointer-events-none relative size-full">
@@ -160,31 +193,54 @@ export function PromptPreviewDialog({
             )}
           </div>
 
-          <div className="flex h-full min-h-0 flex-col overflow-y-auto p-6">
-            <div className="space-y-3">
-              <h2 className="text-xl font-semibold tracking-tight">
+          <div className="flex min-h-0 flex-col overflow-hidden">
+            <div className="shrink-0 space-y-3 px-6 pt-6 pr-14">
+              <h2 className="pr-2 text-xl font-semibold tracking-tight">
                 {prompt.title}
               </h2>
               <div className="flex flex-wrap items-center gap-2">
-                <Badge variant="secondary">{getModelLabel(prompt.model)}</Badge>
+                <Badge variant="secondary">
+                  {getModelLabel(prompt.model)}
+                </Badge>
                 {tags?.map((tag) => (
                   <Badge key={tag} variant="outline">
                     {tag}
                   </Badge>
                 ))}
               </div>
+              <Button
+                type="button"
+                variant="outline"
+                size="sm"
+                className="w-fit"
+                onClick={handleCopy}
+              >
+                {copied ? (
+                  <>
+                    <Check data-icon="inline-start" />
+                    已复制
+                  </>
+                ) : (
+                  <>
+                    <Copy data-icon="inline-start" />
+                    复制提示词
+                  </>
+                )}
+              </Button>
             </div>
 
-            <Separator className="my-5" />
+            <Separator className="mx-6 mt-5 mb-0 shrink-0" />
 
-            <div className="space-y-5">
-              <PromptField label="正向 Prompt" value={prompt.prompt} />
-              {prompt.negative_prompt && (
-                <PromptField
-                  label="负向 Prompt"
-                  value={prompt.negative_prompt}
-                />
-              )}
+            <div className="min-h-0 flex-1 overflow-y-auto overscroll-contain px-6 pr-14 pt-5 pb-6">
+              <div className="space-y-5">
+                <PromptField label="正向 Prompt" value={prompt.prompt} />
+                {prompt.negative_prompt && (
+                  <PromptField
+                    label="负向 Prompt"
+                    value={prompt.negative_prompt}
+                  />
+                )}
+              </div>
             </div>
           </div>
         </div>
