@@ -1,0 +1,2 @@
+AUTH_PASSWORD=your-auth-code-here
+SESSION_SECRET=your-random-session-secret-here
