@@ -77,6 +77,7 @@ function parseUpdatePromptFormData(data: FormData) {
   const model = data.get('model')?.toString() ?? ''
   const tags = data.get('tags')?.toString().trim() ?? ''
   const removeImageIdsRaw = data.get('removeImageIds')?.toString().trim() ?? ''
+  const imageOrderRaw = data.get('imageOrder')?.toString().trim() ?? ''
 
   const parsed = z
     .object({
@@ -87,6 +88,7 @@ function parseUpdatePromptFormData(data: FormData) {
       model: modelIdSchema,
       tags: z.string().optional(),
       removeImageIds: z.array(z.number().int().positive()),
+      imageOrder: z.array(z.number().int().positive()),
     })
     .parse({
       id,
@@ -97,6 +99,9 @@ function parseUpdatePromptFormData(data: FormData) {
       tags: tags || undefined,
       removeImageIds: removeImageIdsRaw
         ? removeImageIdsRaw.split(',').map((value) => Number(value.trim()))
+        : [],
+      imageOrder: imageOrderRaw
+        ? imageOrderRaw.split(',').map((value) => Number(value.trim()))
         : [],
     })
 
@@ -125,10 +130,11 @@ function parseUpdatePromptFormData(data: FormData) {
 const promptSearchSchema = z.object({
   keyword: z.string().optional(),
   model: z.string().optional(),
+  status: z.enum(['published', 'draft']).optional(),
   page: z.coerce.number().int().min(1).catch(1),
 })
 
-const gallerySearchSchema = promptSearchSchema
+const gallerySearchSchema = promptSearchSchema.omit({ status: true })
 
 async function fetchPromptsWithImages(promptRows: (typeof prompts.$inferSelect)[]) {
   if (promptRows.length === 0) return []
@@ -199,6 +205,9 @@ export const listPromptsAdminFn = createServerFn({ method: 'GET' })
       }
       if (data.model) {
         filters.push(eq(prompts.model, data.model))
+      }
+      if (data.status) {
+        filters.push(eq(prompts.draft, data.status === 'draft'))
       }
       const where = filters.length > 0 ? and(...filters) : undefined
       const [{ total = 0 } = { total: 0 }] = await db
@@ -308,6 +317,42 @@ export const listGalleryPromptsFn = createServerFn({ method: 'GET' })
           hasNext: false,
         },
       }
+    }
+  })
+
+export const getGalleryPromptByIdFn = createServerFn({ method: 'GET' })
+  .validator(z.number().int().positive())
+  .handler(async ({ data: id }) => {
+    try {
+      const db = await getDb()
+      if (!db) return null
+
+      const result = await db
+        .select()
+        .from(prompts)
+        .where(and(eq(prompts.id, id), eq(prompts.draft, false)))
+        .limit(1)
+
+      const prompt = result[0]
+      if (!prompt) return null
+
+      const images = await db
+        .select()
+        .from(prompt_images)
+        .where(eq(prompt_images.prompt_id, id))
+        .orderBy(prompt_images.sort_order)
+
+      return {
+        ...prompt,
+        images: images.map((image) => ({
+          id: image.id,
+          url: getImageUrl(image.r2_key),
+          thumbnailUrl: getThumbnailUrl(image.r2_key, image.thumbnail_r2_key),
+          sort_order: image.sort_order,
+        })),
+      }
+    } catch {
+      return null
     }
   })
 
@@ -493,9 +538,26 @@ export const updatePromptFn = createServerFn({ method: 'POST' })
         await db.delete(prompt_images).where(eq(prompt_images.id, image.id))
       }
 
-      const maxSortOrder = currentImages
-        .filter((image) => !data.removeImageIds.includes(image.id))
-        .reduce((max, image) => Math.max(max, image.sort_order ?? 0), -1)
+      const remainingImages = currentImages.filter(
+        (image) => !data.removeImageIds.includes(image.id),
+      )
+      const orderIds =
+        data.imageOrder.length > 0 ? data.imageOrder : remainingImages.map((image) => image.id)
+      const orderIndex = new Map(orderIds.map((id, index) => [id, index]))
+      const orderedRemainingImages = [...remainingImages].sort((a, b) => {
+        const aIndex = orderIndex.get(a.id) ?? Number.MAX_SAFE_INTEGER
+        const bIndex = orderIndex.get(b.id) ?? Number.MAX_SAFE_INTEGER
+        if (aIndex !== bIndex) return aIndex - bIndex
+        return (a.sort_order ?? 0) - (b.sort_order ?? 0)
+      })
+
+      for (const [index, image] of orderedRemainingImages.entries()) {
+        if (image.sort_order === index) continue
+        await db
+          .update(prompt_images)
+          .set({ sort_order: index })
+          .where(eq(prompt_images.id, image.id))
+      }
 
       try {
         for (const [index, file] of data.imageFiles.entries()) {
@@ -520,7 +582,7 @@ export const updatePromptFn = createServerFn({ method: 'POST' })
             prompt_id: data.id,
             r2_key: imageKey,
             thumbnail_r2_key: storedThumbnailKey,
-            sort_order: maxSortOrder + 1 + index,
+            sort_order: orderedRemainingImages.length + index,
             created_at: now,
           })
         }

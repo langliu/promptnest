@@ -171,14 +171,18 @@ function GalleryPage() {
               return (
                 <Card
                   key={prompt.id}
-                  className='mb-6 break-inside-avoid gap-0 overflow-hidden py-0'
+                  role='button'
+                  tabIndex={0}
+                  className='focus-visible:ring-ring mb-6 cursor-pointer break-inside-avoid gap-0 overflow-hidden py-0 transition-opacity hover:opacity-95 focus-visible:ring-2 focus-visible:ring-offset-2 focus-visible:outline-none'
+                  aria-label={`查看 ${prompt.title} 的详情`}
+                  onClick={() => setPreviewPrompt(prompt)}
+                  onKeyDown={(event) => {
+                    if (event.key !== 'Enter' && event.key !== ' ') return
+                    event.preventDefault()
+                    setPreviewPrompt(prompt)
+                  }}
                 >
-                  <button
-                    type='button'
-                    className='group bg-muted relative block w-full cursor-pointer transition-opacity hover:opacity-95'
-                    onClick={() => setPreviewPrompt(prompt)}
-                    aria-label={`查看 ${prompt.title} 的详情`}
-                  >
+                  <div className='group bg-muted relative block w-full'>
                     {cover ? (
                       <img
                         src={cover.thumbnailUrl ?? cover.url}
@@ -201,10 +205,13 @@ function GalleryPage() {
                       </Badge>
                     )}
 
-                    <div className='pointer-events-none absolute inset-x-0 bottom-0 bg-linear-to-t from-black/75 via-black/35 to-transparent px-2.5 pt-10 pb-2.5'>
+                    <div className='pointer-events-none absolute inset-x-0 bottom-0 space-y-2 bg-linear-to-t from-black/80 via-black/45 to-transparent px-3 pt-16 pb-3'>
+                      <h2 className='line-clamp-2 text-left text-base leading-snug font-semibold text-white drop-shadow-sm'>
+                        {prompt.title}
+                      </h2>
                       <GalleryCardTags overlay model={prompt.model} tags={prompt.tags} />
                     </div>
-                  </button>
+                  </div>
                 </Card>
               )
             })}

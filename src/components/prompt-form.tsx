@@ -1,4 +1,4 @@
-import { AlertCircle, Loader2, X } from 'lucide-react'
+import { AlertCircle, ArrowLeft, ArrowRight, Loader2, X } from 'lucide-react'
 import { useState } from 'react'
 
 import { ImageUpload, type PendingImage } from '@/components/image-upload'
@@ -21,6 +21,7 @@ import { cn } from '@/lib/utils'
 export type ExistingPromptImage = {
   id: number
   url: string
+  sort_order?: number | null
 }
 
 export type PromptFormValues = {
@@ -40,6 +41,7 @@ type PromptFormProps = {
     formData: PromptFormValues
     images: PendingImage[]
     removeImageIds: number[]
+    imageOrder: number[]
   }) => Promise<void>
   onCancel?: () => void
 }
@@ -65,12 +67,21 @@ export function PromptForm({
     ...initialValues,
   })
   const [images, setImages] = useState<PendingImage[]>([])
+  const [existingImageOrder, setExistingImageOrder] = useState(() =>
+    [...existingImages]
+      .sort((a, b) => (a.sort_order ?? 0) - (b.sort_order ?? 0))
+      .map((image) => image.id),
+  )
   const [removeImageIds, setRemoveImageIds] = useState<number[]>([])
   const [error, setError] = useState<string | null>(null)
   const [imageError, setImageError] = useState<string | null>(null)
   const [isSubmitting, setIsSubmitting] = useState(false)
 
-  const visibleExistingImages = existingImages.filter((image) => !removeImageIds.includes(image.id))
+  const existingImagesById = new Map(existingImages.map((image) => [image.id, image]))
+  const visibleExistingImages = existingImageOrder
+    .map((id) => existingImagesById.get(id))
+    .filter((image): image is ExistingPromptImage => Boolean(image))
+    .filter((image) => !removeImageIds.includes(image.id))
   const maxNewImages =
     mode === 'edit'
       ? Math.max(0, MAX_PROMPT_IMAGES - visibleExistingImages.length)
@@ -86,12 +97,25 @@ export function PromptForm({
         formData,
         images,
         removeImageIds,
+        imageOrder: visibleExistingImages.map((image) => image.id),
       })
     } catch (err) {
       setError(err instanceof Error ? err.message : '保存失败，请重试')
     } finally {
       setIsSubmitting(false)
     }
+  }
+
+  const moveExistingImage = (id: number, direction: -1 | 1) => {
+    setExistingImageOrder((current) => {
+      const index = current.indexOf(id)
+      const nextIndex = index + direction
+      if (index < 0 || nextIndex < 0 || nextIndex >= current.length) return current
+
+      const next = [...current]
+      ;[next[index], next[nextIndex]] = [next[nextIndex], next[index]]
+      return next
+    })
   }
 
   return (
@@ -145,12 +169,34 @@ export function PromptForm({
         <div className='space-y-2'>
           <Label>已有参考图</Label>
           <div className='grid grid-cols-2 gap-3 sm:grid-cols-4'>
-            {visibleExistingImages.map((image) => (
+            {visibleExistingImages.map((image, index) => (
               <div
                 key={image.id}
                 className='group border-border relative overflow-hidden rounded-lg border'
               >
                 <img src={image.url} alt='' className='aspect-square w-full object-cover' />
+                <div className='absolute top-1.5 left-1.5 flex gap-1 opacity-100 transition-opacity sm:opacity-0 sm:group-focus-within:opacity-100 sm:group-hover:opacity-100'>
+                  <Button
+                    type='button'
+                    variant='secondary'
+                    size='icon-xs'
+                    disabled={isSubmitting || index === 0}
+                    aria-label='前移图片'
+                    onClick={() => moveExistingImage(image.id, -1)}
+                  >
+                    <ArrowLeft />
+                  </Button>
+                  <Button
+                    type='button'
+                    variant='secondary'
+                    size='icon-xs'
+                    disabled={isSubmitting || index === visibleExistingImages.length - 1}
+                    aria-label='后移图片'
+                    onClick={() => moveExistingImage(image.id, 1)}
+                  >
+                    <ArrowRight />
+                  </Button>
+                </div>
                 <button
                   type='button'
                   onClick={() => setRemoveImageIds((current) => [...current, image.id])}

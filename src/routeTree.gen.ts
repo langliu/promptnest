@@ -13,6 +13,7 @@ import { Route as LoginRouteImport } from './routes/login'
 import { Route as GalleryRouteImport } from './routes/gallery'
 import { Route as AuthenticatedRouteImport } from './routes/_authenticated'
 import { Route as IndexRouteImport } from './routes/index'
+import { Route as GalleryIdRouteImport } from './routes/gallery_.$id'
 import { Route as ApiImagesRouteImport } from './routes/api/images'
 import { Route as AuthenticatedAdminRouteImport } from './routes/_authenticated/admin'
 import { Route as AuthenticatedAdminIndexRouteImport } from './routes/_authenticated/admin/index'
@@ -37,6 +38,11 @@ const AuthenticatedRoute = AuthenticatedRouteImport.update({
 const IndexRoute = IndexRouteImport.update({
   id: '/',
   path: '/',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const GalleryIdRoute = GalleryIdRouteImport.update({
+  id: '/gallery_/$id',
+  path: '/gallery/$id',
   getParentRoute: () => rootRouteImport,
 } as any)
 const ApiImagesRoute = ApiImagesRouteImport.update({
@@ -79,6 +85,7 @@ export interface FileRoutesByFullPath {
   '/login': typeof LoginRoute
   '/admin': typeof AuthenticatedAdminRouteWithChildren
   '/api/images': typeof ApiImagesRoute
+  '/gallery/$id': typeof GalleryIdRoute
   '/admin/': typeof AuthenticatedAdminIndexRoute
   '/admin/prompts/new': typeof AuthenticatedAdminPromptsNewRoute
   '/admin/prompts/': typeof AuthenticatedAdminPromptsIndexRoute
@@ -89,6 +96,7 @@ export interface FileRoutesByTo {
   '/gallery': typeof GalleryRoute
   '/login': typeof LoginRoute
   '/api/images': typeof ApiImagesRoute
+  '/gallery/$id': typeof GalleryIdRoute
   '/admin': typeof AuthenticatedAdminIndexRoute
   '/admin/prompts/new': typeof AuthenticatedAdminPromptsNewRoute
   '/admin/prompts': typeof AuthenticatedAdminPromptsIndexRoute
@@ -102,6 +110,7 @@ export interface FileRoutesById {
   '/login': typeof LoginRoute
   '/_authenticated/admin': typeof AuthenticatedAdminRouteWithChildren
   '/api/images': typeof ApiImagesRoute
+  '/gallery_/$id': typeof GalleryIdRoute
   '/_authenticated/admin/': typeof AuthenticatedAdminIndexRoute
   '/_authenticated/admin/prompts/new': typeof AuthenticatedAdminPromptsNewRoute
   '/_authenticated/admin/prompts/': typeof AuthenticatedAdminPromptsIndexRoute
@@ -115,6 +124,7 @@ export interface FileRouteTypes {
     | '/login'
     | '/admin'
     | '/api/images'
+    | '/gallery/$id'
     | '/admin/'
     | '/admin/prompts/new'
     | '/admin/prompts/'
@@ -125,6 +135,7 @@ export interface FileRouteTypes {
     | '/gallery'
     | '/login'
     | '/api/images'
+    | '/gallery/$id'
     | '/admin'
     | '/admin/prompts/new'
     | '/admin/prompts'
@@ -137,6 +148,7 @@ export interface FileRouteTypes {
     | '/login'
     | '/_authenticated/admin'
     | '/api/images'
+    | '/gallery_/$id'
     | '/_authenticated/admin/'
     | '/_authenticated/admin/prompts/new'
     | '/_authenticated/admin/prompts/'
@@ -149,6 +161,7 @@ export interface RootRouteChildren {
   GalleryRoute: typeof GalleryRoute
   LoginRoute: typeof LoginRoute
   ApiImagesRoute: typeof ApiImagesRoute
+  GalleryIdRoute: typeof GalleryIdRoute
 }
 
 declare module '@tanstack/react-router' {
@@ -179,6 +192,13 @@ declare module '@tanstack/react-router' {
       path: '/'
       fullPath: '/'
       preLoaderRoute: typeof IndexRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/gallery_/$id': {
+      id: '/gallery_/$id'
+      path: '/gallery/$id'
+      fullPath: '/gallery/$id'
+      preLoaderRoute: typeof GalleryIdRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/api/images': {
@@ -261,6 +281,7 @@ const rootRouteChildren: RootRouteChildren = {
   GalleryRoute: GalleryRoute,
   LoginRoute: LoginRoute,
   ApiImagesRoute: ApiImagesRoute,
+  GalleryIdRoute: GalleryIdRoute,
 }
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)

@@ -64,7 +64,7 @@ function AdminEditPromptPage() {
           }}
           existingImages={prompt.images}
           onCancel={() => navigate({ to: '/admin/prompts' })}
-          onSubmit={async ({ formData, images, removeImageIds }) => {
+          onSubmit={async ({ formData, images, removeImageIds, imageOrder }) => {
             const payload = new FormData()
             payload.append('id', String(prompt.id))
             payload.append('title', formData.title)
@@ -74,6 +74,9 @@ function AdminEditPromptPage() {
             payload.append('tags', formData.tags)
             if (removeImageIds.length > 0) {
               payload.append('removeImageIds', removeImageIds.join(','))
+            }
+            if (imageOrder.length > 0) {
+              payload.append('imageOrder', imageOrder.join(','))
             }
             for (const image of images) {
               payload.append('images', image.file)

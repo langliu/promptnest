@@ -24,6 +24,7 @@ import { listPromptsAdminFn } from '@/lib/prompts.functions'
 const searchSchema = z.object({
   keyword: z.string().optional(),
   model: z.string().optional(),
+  status: z.enum(['published', 'draft']).optional(),
   page: z.coerce.number().int().min(1).optional().catch(undefined),
 })
 
@@ -32,6 +33,7 @@ export const Route = createFileRoute('/_authenticated/admin/prompts/')({
   loaderDeps: ({ search }) => ({
     keyword: search.keyword,
     model: search.model,
+    status: search.status,
     page: search.page,
   }),
   loader: async ({ deps }) => {
@@ -39,6 +41,7 @@ export const Route = createFileRoute('/_authenticated/admin/prompts/')({
       data: {
         keyword: deps.keyword,
         model: deps.model,
+        status: deps.status,
         page: deps.page,
       },
     })
@@ -56,11 +59,13 @@ function AdminPromptsPage() {
   const navigate = Route.useNavigate()
   const [keyword, setKeyword] = useState(search.keyword ?? '')
   const [model, setModel] = useState(search.model ?? 'all')
+  const [status, setStatus] = useState(search.status ?? 'all')
 
   useEffect(() => {
     setKeyword(search.keyword ?? '')
     setModel(search.model ?? 'all')
-  }, [search.keyword, search.model])
+    setStatus(search.status ?? 'all')
+  }, [search.keyword, search.model, search.status])
 
   const handleSearch = (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault()
@@ -68,6 +73,7 @@ function AdminPromptsPage() {
       search: {
         keyword: keyword.trim() || undefined,
         model: model === 'all' ? undefined : model,
+        status: status === 'all' ? undefined : (status as 'published' | 'draft'),
         page: undefined,
       },
     })
@@ -76,7 +82,10 @@ function AdminPromptsPage() {
   const handleReset = () => {
     setKeyword('')
     setModel('all')
-    navigate({ search: { keyword: undefined, model: undefined, page: undefined } })
+    setStatus('all')
+    navigate({
+      search: { keyword: undefined, model: undefined, status: undefined, page: undefined },
+    })
   }
 
   const goToPage = (page: number) => {
@@ -142,6 +151,30 @@ function AdminPromptsPage() {
                       {item.label}
                     </SelectItem>
                   ))}
+                </SelectContent>
+              </Select>
+            </div>
+
+            <div className='flex w-full items-center gap-3 sm:w-auto'>
+              <Label htmlFor='status' className='text-muted-foreground w-14 shrink-0 text-right'>
+                状态
+              </Label>
+              <Select
+                value={status}
+                items={[
+                  { value: 'all', label: '全部状态' },
+                  { value: 'published', label: '已发布' },
+                  { value: 'draft', label: '草稿' },
+                ]}
+                onValueChange={(value) => setStatus(value ?? 'all')}
+              >
+                <SelectTrigger id='status' className='w-full sm:w-36'>
+                  <SelectValue placeholder='全部状态' />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value='all'>全部状态</SelectItem>
+                  <SelectItem value='published'>已发布</SelectItem>
+                  <SelectItem value='draft'>草稿</SelectItem>
                 </SelectContent>
               </Select>
             </div>

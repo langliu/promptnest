@@ -1,4 +1,4 @@
-import { ImagePlus, Loader2, X } from 'lucide-react'
+import { ArrowLeft, ArrowRight, ImagePlus, Loader2, X } from 'lucide-react'
 import { useRef, useState } from 'react'
 
 import { Button } from '@/components/ui/button'
@@ -113,6 +113,16 @@ export function ImageUpload({
     onError?.(null)
   }
 
+  const moveImage = (id: string, direction: -1 | 1) => {
+    const index = images.findIndex((image) => image.id === id)
+    const nextIndex = index + direction
+    if (index < 0 || nextIndex < 0 || nextIndex >= images.length) return
+
+    const nextImages = [...images]
+    ;[nextImages[index], nextImages[nextIndex]] = [nextImages[nextIndex], nextImages[index]]
+    onChange(nextImages)
+  }
+
   return (
     <div className='space-y-3'>
       <div
@@ -167,7 +177,7 @@ export function ImageUpload({
 
       {images.length > 0 && (
         <div className='grid grid-cols-2 gap-3 sm:grid-cols-3 md:grid-cols-4'>
-          {images.map((image) => (
+          {images.map((image, index) => (
             <div
               key={image.id}
               className='group bg-muted relative aspect-square overflow-hidden rounded-lg border'
@@ -177,6 +187,34 @@ export function ImageUpload({
                 alt={image.file.name}
                 className='size-full object-cover'
               />
+              <div className='absolute top-2 left-2 flex gap-1 opacity-100 transition-opacity sm:opacity-0 sm:group-focus-within:opacity-100 sm:group-hover:opacity-100'>
+                <Button
+                  type='button'
+                  variant='secondary'
+                  size='icon-xs'
+                  disabled={disabled || index === 0}
+                  aria-label='前移图片'
+                  onClick={(e) => {
+                    e.stopPropagation()
+                    moveImage(image.id, -1)
+                  }}
+                >
+                  <ArrowLeft />
+                </Button>
+                <Button
+                  type='button'
+                  variant='secondary'
+                  size='icon-xs'
+                  disabled={disabled || index === images.length - 1}
+                  aria-label='后移图片'
+                  onClick={(e) => {
+                    e.stopPropagation()
+                    moveImage(image.id, 1)
+                  }}
+                >
+                  <ArrowRight />
+                </Button>
+              </div>
               <Button
                 type='button'
                 variant='destructive'
