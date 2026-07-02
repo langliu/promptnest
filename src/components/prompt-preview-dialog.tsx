@@ -1,244 +1,222 @@
-import { Check, ChevronLeft, ChevronRight, Copy, ImageIcon } from "lucide-react";
-import { useEffect, useState } from "react";
-import { Badge } from "@/components/ui/badge";
-import { Button } from "@/components/ui/button";
-import {
-  Dialog,
-  DialogContent,
-  DialogTitle,
-} from "@/components/ui/dialog";
-import { Separator } from "@/components/ui/separator";
-import { getModelLabel } from "@/lib/models";
-import { parsePromptTags } from "@/lib/prompt-tags";
-import { cn } from "@/lib/utils";
+import { Check, ChevronLeft, ChevronRight, Copy, ImageIcon } from 'lucide-react'
+import { useEffect, useState } from 'react'
 
-export function formatPromptForCopy(
-  prompt: string,
-  negativePrompt: string | null,
-): string {
-  const positive = prompt.trim();
-  const negative = negativePrompt?.trim();
+import { Badge } from '@/components/ui/badge'
+import { Button } from '@/components/ui/button'
+import { Dialog, DialogContent, DialogTitle } from '@/components/ui/dialog'
+import { Separator } from '@/components/ui/separator'
+import { getModelLabel } from '@/lib/models'
+import { parsePromptTags } from '@/lib/prompt-tags'
+import { cn } from '@/lib/utils'
+
+export function formatPromptForCopy(prompt: string, negativePrompt: string | null): string {
+  const positive = prompt.trim()
+  const negative = negativePrompt?.trim()
 
   if (!negative) {
-    return positive;
+    return positive
   }
 
-  return `${positive}\n\n负面提示词\n\n${negative}`;
+  return `${positive}\n\n负面提示词\n\n${negative}`
 }
 
 export type GalleryPrompt = {
-  id: number;
-  title: string;
-  prompt: string;
-  negative_prompt: string | null;
-  model: string;
-  tags: string | null;
-  images: { id: number; url: string; sort_order: number | null }[];
-};
+  id: number
+  title: string
+  prompt: string
+  negative_prompt: string | null
+  model: string
+  tags: string | null
+  images: { id: number; url: string; sort_order: number | null }[]
+}
 
 type PromptPreviewDialogProps = {
-  prompt: GalleryPrompt;
-  onClose: () => void;
-};
+  prompt: GalleryPrompt
+  onClose: () => void
+}
 
 function PromptField({
   label,
   value,
   className,
 }: {
-  label: string;
-  value: string;
-  className?: string;
+  label: string
+  value: string
+  className?: string
 }) {
   return (
-    <div className={cn("space-y-2", className)}>
-      <h3 className="text-xs font-medium tracking-wide text-muted-foreground uppercase">
-        {label}
-      </h3>
-      <p className="rounded-lg border border-border/60 bg-muted/40 p-3 text-sm leading-relaxed whitespace-pre-wrap">
+    <div className={cn('space-y-2', className)}>
+      <h3 className='text-muted-foreground text-xs font-medium tracking-wide uppercase'>{label}</h3>
+      <p className='border-border/60 bg-muted/40 rounded-lg border p-3 text-sm leading-relaxed whitespace-pre-wrap'>
         {value}
       </p>
     </div>
-  );
+  )
 }
 
-export function PromptPreviewDialog({
-  prompt,
-  onClose,
-}: PromptPreviewDialogProps) {
-  const [activeIndex, setActiveIndex] = useState(0);
-  const [copied, setCopied] = useState(false);
+export function PromptPreviewDialog({ prompt, onClose }: PromptPreviewDialogProps) {
+  const [activeIndex, setActiveIndex] = useState(0)
+  const [copied, setCopied] = useState(false)
 
   useEffect(() => {
-    setActiveIndex(0);
-    setCopied(false);
-  }, [prompt.id]);
+    setActiveIndex(0)
+    setCopied(false)
+  }, [prompt.id])
 
   useEffect(() => {
-    if (!copied) return;
-    const timer = window.setTimeout(() => setCopied(false), 2000);
-    return () => window.clearTimeout(timer);
-  }, [copied]);
+    if (!copied) return
+    const timer = window.setTimeout(() => setCopied(false), 2000)
+    return () => window.clearTimeout(timer)
+  }, [copied])
 
   const handleCopy = async () => {
-    const text = formatPromptForCopy(prompt.prompt, prompt.negative_prompt);
+    const text = formatPromptForCopy(prompt.prompt, prompt.negative_prompt)
     try {
-      await navigator.clipboard.writeText(text);
-      setCopied(true);
+      await navigator.clipboard.writeText(text)
+      setCopied(true)
     } catch {
-      setCopied(false);
+      setCopied(false)
     }
-  };
+  }
 
-  const images = prompt.images;
-  const hasMultipleImages = images.length > 1;
-  const tags = parsePromptTags(prompt.tags);
+  const images = prompt.images
+  const hasMultipleImages = images.length > 1
+  const tags = parsePromptTags(prompt.tags)
 
   const goToIndex = (index: number) => {
-    setActiveIndex(index);
-  };
+    setActiveIndex(index)
+  }
 
   const showPrev = (e: React.MouseEvent) => {
-    e.stopPropagation();
-    setActiveIndex((index) => (index > 0 ? index - 1 : images.length - 1));
-  };
+    e.stopPropagation()
+    setActiveIndex((index) => (index > 0 ? index - 1 : images.length - 1))
+  }
 
   const showNext = (e: React.MouseEvent) => {
-    e.stopPropagation();
-    setActiveIndex((index) => (index < images.length - 1 ? index + 1 : 0));
-  };
+    e.stopPropagation()
+    setActiveIndex((index) => (index < images.length - 1 ? index + 1 : 0))
+  }
 
   return (
     <Dialog
       open
       onOpenChange={(nextOpen) => {
-        if (!nextOpen) onClose();
+        if (!nextOpen) onClose()
       }}
     >
-      <DialogContent className="flex h-[min(90vh,42rem)] max-h-[90vh] flex-col gap-0 overflow-hidden p-0 sm:max-w-5xl">
-        <DialogTitle className="sr-only">{prompt.title}</DialogTitle>
+      <DialogContent className='flex h-[min(90vh,42rem)] max-h-[90vh] flex-col gap-0 overflow-hidden p-0 sm:max-w-5xl'>
+        <DialogTitle className='sr-only'>{prompt.title}</DialogTitle>
 
-        <div className="grid min-h-0 flex-1 overflow-hidden grid-rows-[minmax(0,1fr)_minmax(0,1fr)] md:grid-cols-2 md:grid-rows-1">
-          <div className="relative flex min-h-0 flex-col bg-muted">
-            <div className="relative min-h-0 flex-1 p-4">
+        <div className='grid min-h-0 flex-1 grid-rows-[minmax(0,1fr)_minmax(0,1fr)] overflow-hidden md:grid-cols-2 md:grid-rows-1'>
+          <div className='bg-muted relative flex min-h-0 flex-col'>
+            <div className='relative min-h-0 flex-1 p-4'>
               {images.length > 0 ? (
-                <div className="pointer-events-none relative size-full">
+                <div className='pointer-events-none relative size-full'>
                   {images.map((image, index) => (
                     <img
                       key={image.id}
                       src={image.url}
-                      alt={index === activeIndex ? prompt.title : ""}
+                      alt={index === activeIndex ? prompt.title : ''}
                       aria-hidden={index !== activeIndex}
                       className={cn(
-                        "absolute inset-0 size-full object-contain transition-opacity duration-200",
-                        index === activeIndex ? "opacity-100" : "opacity-0",
+                        'absolute inset-0 size-full object-contain transition-opacity duration-200',
+                        index === activeIndex ? 'opacity-100' : 'opacity-0',
                       )}
                     />
                   ))}
                 </div>
               ) : (
-                <div className="flex size-full flex-col items-center justify-center gap-2 text-muted-foreground">
-                  <ImageIcon className="size-10" />
-                  <span className="text-sm">暂无参考图</span>
+                <div className='text-muted-foreground flex size-full flex-col items-center justify-center gap-2'>
+                  <ImageIcon className='size-10' />
+                  <span className='text-sm'>暂无参考图</span>
                 </div>
               )}
 
               {hasMultipleImages && (
                 <>
                   <button
-                    type="button"
-                    aria-label="上一张"
-                    className="absolute top-1/2 left-3 z-20 flex size-8 -translate-y-1/2 items-center justify-center rounded-lg border border-border/60 bg-background/90 text-foreground shadow-sm backdrop-blur-sm transition-colors hover:bg-background"
+                    type='button'
+                    aria-label='上一张'
+                    className='border-border/60 bg-background/90 text-foreground hover:bg-background absolute top-1/2 left-3 z-20 flex size-8 -translate-y-1/2 items-center justify-center rounded-lg border shadow-sm backdrop-blur-sm transition-colors'
                     onClick={showPrev}
                   >
-                    <ChevronLeft className="size-4" />
+                    <ChevronLeft className='size-4' />
                   </button>
                   <button
-                    type="button"
-                    aria-label="下一张"
-                    className="absolute top-1/2 right-3 z-20 flex size-8 -translate-y-1/2 items-center justify-center rounded-lg border border-border/60 bg-background/90 text-foreground shadow-sm backdrop-blur-sm transition-colors hover:bg-background"
+                    type='button'
+                    aria-label='下一张'
+                    className='border-border/60 bg-background/90 text-foreground hover:bg-background absolute top-1/2 right-3 z-20 flex size-8 -translate-y-1/2 items-center justify-center rounded-lg border shadow-sm backdrop-blur-sm transition-colors'
                     onClick={showNext}
                   >
-                    <ChevronRight className="size-4" />
+                    <ChevronRight className='size-4' />
                   </button>
                 </>
               )}
             </div>
 
             {hasMultipleImages && (
-              <div className="flex shrink-0 gap-2 overflow-x-auto border-t border-border/60 p-3">
+              <div className='border-border/60 flex shrink-0 gap-2 overflow-x-auto border-t p-3'>
                 {images.map((image, index) => (
                   <button
                     key={image.id}
-                    type="button"
+                    type='button'
                     onClick={(e) => {
-                      e.stopPropagation();
-                      goToIndex(index);
+                      e.stopPropagation()
+                      goToIndex(index)
                     }}
                     className={cn(
-                      "size-14 shrink-0 overflow-hidden rounded-md border-2 transition-colors",
+                      'size-14 shrink-0 overflow-hidden rounded-md border-2 transition-colors',
                       index === activeIndex
-                        ? "border-primary"
-                        : "border-transparent opacity-70 hover:opacity-100",
+                        ? 'border-primary'
+                        : 'border-transparent opacity-70 hover:opacity-100',
                     )}
                   >
-                    <img
-                      src={image.url}
-                      alt=""
-                      className="size-full object-cover"
-                    />
+                    <img src={image.url} alt='' className='size-full object-cover' />
                   </button>
                 ))}
               </div>
             )}
           </div>
 
-          <div className="flex min-h-0 flex-col overflow-hidden">
-            <div className="shrink-0 space-y-3 px-6 pt-6 pr-14">
-              <h2 className="pr-2 text-xl font-semibold tracking-tight">
-                {prompt.title}
-              </h2>
-              <div className="flex flex-wrap items-center gap-2">
-                <Badge variant="secondary">
-                  {getModelLabel(prompt.model)}
-                </Badge>
+          <div className='flex min-h-0 flex-col overflow-hidden'>
+            <div className='shrink-0 space-y-3 px-6 pt-6 pr-14'>
+              <h2 className='pr-2 text-xl font-semibold tracking-tight'>{prompt.title}</h2>
+              <div className='flex flex-wrap items-center gap-2'>
+                <Badge variant='secondary'>{getModelLabel(prompt.model)}</Badge>
                 {tags?.map((tag) => (
-                  <Badge key={tag} variant="outline">
+                  <Badge key={tag} variant='outline'>
                     {tag}
                   </Badge>
                 ))}
               </div>
               <Button
-                type="button"
-                variant="outline"
-                size="sm"
-                className="w-fit"
+                type='button'
+                variant='outline'
+                size='sm'
+                className='w-fit'
                 onClick={handleCopy}
               >
                 {copied ? (
                   <>
-                    <Check data-icon="inline-start" />
+                    <Check data-icon='inline-start' />
                     已复制
                   </>
                 ) : (
                   <>
-                    <Copy data-icon="inline-start" />
+                    <Copy data-icon='inline-start' />
                     复制提示词
                   </>
                 )}
               </Button>
             </div>
 
-            <Separator className="mx-6 mt-5 mb-0 shrink-0" />
+            <Separator className='mx-6 mt-5 mb-0 shrink-0' />
 
-            <div className="min-h-0 flex-1 overflow-y-auto overscroll-contain px-6 pr-14 pt-5 pb-6">
-              <div className="space-y-5">
-                <PromptField label="正向 Prompt" value={prompt.prompt} />
+            <div className='min-h-0 flex-1 overflow-y-auto overscroll-contain px-6 pt-5 pr-14 pb-6'>
+              <div className='space-y-5'>
+                <PromptField label='正向 Prompt' value={prompt.prompt} />
                 {prompt.negative_prompt && (
-                  <PromptField
-                    label="负向 Prompt"
-                    value={prompt.negative_prompt}
-                  />
+                  <PromptField label='负向 Prompt' value={prompt.negative_prompt} />
                 )}
               </div>
             </div>
@@ -246,5 +224,5 @@ export function PromptPreviewDialog({
         </div>
       </DialogContent>
     </Dialog>
-  );
+  )
 }

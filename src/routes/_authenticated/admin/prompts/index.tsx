@@ -3,13 +3,8 @@ import { format } from 'date-fns'
 import { Pencil, Plus, Search } from 'lucide-react'
 import { useState } from 'react'
 import { z } from 'zod'
-import { listPromptsAdminFn } from '@/lib/prompts.functions'
-import { getModelLabel, MODEL_FILTER_SELECT_ITEMS } from '@/lib/models'
-import { parsePromptTags } from '@/lib/prompt-tags'
-import {
-  AdminPageHeader,
-  AdminPageShell,
-} from '@/components/admin/admin-page-shell'
+
+import { AdminPageHeader, AdminPageShell } from '@/components/admin/admin-page-shell'
 import { PromptDraftSwitch } from '@/components/admin/prompt-draft-switch'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
@@ -22,6 +17,9 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select'
+import { getModelLabel, MODEL_FILTER_SELECT_ITEMS } from '@/lib/models'
+import { parsePromptTags } from '@/lib/prompt-tags'
+import { listPromptsAdminFn } from '@/lib/prompts.functions'
 
 const searchSchema = z.object({
   keyword: z.string().optional(),
@@ -70,203 +68,159 @@ function AdminPromptsPage() {
     <AdminPageShell
       header={
         <AdminPageHeader
-          title="Prompt 管理"
-          description="查询、新建和编辑所有 Prompt"
+          title='Prompt 管理'
+          description='查询、新建和编辑所有 Prompt'
           action={
-            <Button render={<Link to="/admin/prompts/new" />} nativeButton={false}>
-              <Plus data-icon="inline-start" />
+            <Button render={<Link to='/admin/prompts/new' />} nativeButton={false}>
+              <Plus data-icon='inline-start' />
               新建 Prompt
             </Button>
           }
         />
       }
-      contentClassName="space-y-6 p-6"
+      contentClassName='space-y-6 p-6'
     >
-        <form
-          onSubmit={handleSearch}
-          className="rounded-xl border border-border bg-card p-4"
-        >
-          <div className="flex flex-col gap-4 lg:flex-row lg:items-center">
-            <div className="flex flex-1 flex-col gap-4 sm:flex-row sm:items-center">
-              <div className="flex min-w-0 flex-1 items-center gap-3">
-                <Label
-                  htmlFor="keyword"
-                  className="w-14 shrink-0 text-right text-muted-foreground"
-                >
-                  关键词
-                </Label>
-                <Input
-                  id="keyword"
-                  name="keyword"
-                  value={keyword}
-                  onChange={(e) => setKeyword(e.target.value)}
-                  placeholder="搜索标题、标签或 Prompt 内容"
-                  className="min-w-0 flex-1"
-                />
-              </div>
-
-              <div className="flex w-full items-center gap-3 sm:w-auto">
-                <Label
-                  htmlFor="model"
-                  className="w-14 shrink-0 text-right text-muted-foreground"
-                >
-                  模型
-                </Label>
-                <Select
-                  value={model}
-                  items={MODEL_FILTER_SELECT_ITEMS}
-                  onValueChange={(value) => setModel(value ?? 'all')}
-                >
-                  <SelectTrigger id="model" className="w-full sm:w-44">
-                    <SelectValue placeholder="全部模型" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {MODEL_FILTER_SELECT_ITEMS.map((item) => (
-                      <SelectItem key={item.value} value={item.value}>
-                        {item.label}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-              </div>
+      <form onSubmit={handleSearch} className='border-border bg-card rounded-xl border p-4'>
+        <div className='flex flex-col gap-4 lg:flex-row lg:items-center'>
+          <div className='flex flex-1 flex-col gap-4 sm:flex-row sm:items-center'>
+            <div className='flex min-w-0 flex-1 items-center gap-3'>
+              <Label htmlFor='keyword' className='text-muted-foreground w-14 shrink-0 text-right'>
+                关键词
+              </Label>
+              <Input
+                id='keyword'
+                name='keyword'
+                value={keyword}
+                onChange={(e) => setKeyword(e.target.value)}
+                placeholder='搜索标题、标签或 Prompt 内容'
+                className='min-w-0 flex-1'
+              />
             </div>
 
-            <div className="flex shrink-0 gap-2 lg:ml-2">
-              <Button type="submit" className="min-w-24">
-                <Search data-icon="inline-start" />
-                查询
-              </Button>
-              <Button
-                type="button"
-                variant="outline"
-                className="min-w-24"
-                onClick={handleReset}
+            <div className='flex w-full items-center gap-3 sm:w-auto'>
+              <Label htmlFor='model' className='text-muted-foreground w-14 shrink-0 text-right'>
+                模型
+              </Label>
+              <Select
+                value={model}
+                items={MODEL_FILTER_SELECT_ITEMS}
+                onValueChange={(value) => setModel(value ?? 'all')}
               >
-                重置
-              </Button>
+                <SelectTrigger id='model' className='w-full sm:w-44'>
+                  <SelectValue placeholder='全部模型' />
+                </SelectTrigger>
+                <SelectContent>
+                  {MODEL_FILTER_SELECT_ITEMS.map((item) => (
+                    <SelectItem key={item.value} value={item.value}>
+                      {item.label}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
             </div>
           </div>
-        </form>
 
-        <div className="overflow-hidden rounded-xl border border-border bg-card">
-          <div className="overflow-x-auto">
-            <table className="w-full min-w-[1080px] table-fixed text-left text-sm">
-              <colgroup>
-                <col className="w-16" />
-                <col className="w-[420px]" />
-                <col className="w-36" />
-                <col className="w-32" />
-                <col className="w-20" />
-                <col className="w-36" />
-                <col className="w-40" />
-                <col className="w-32" />
-              </colgroup>
-              <thead className="border-b border-border bg-muted/40">
-                <tr>
-                  <th className="px-4 py-3 font-medium whitespace-nowrap">ID</th>
-                  <th className="px-4 py-3 font-medium whitespace-nowrap">
-                    标题
-                  </th>
-                  <th className="px-4 py-3 font-medium whitespace-nowrap">
-                    模型
-                  </th>
-                  <th className="px-4 py-3 font-medium whitespace-nowrap">
-                    标签
-                  </th>
-                  <th className="px-4 py-3 font-medium whitespace-nowrap">
-                    图片
-                  </th>
-                  <th className="px-4 py-3 font-medium whitespace-nowrap">
-                    状态
-                  </th>
-                  <th className="px-4 py-3 font-medium whitespace-nowrap">
-                    创建时间
-                  </th>
-                  <th className="sticky right-0 z-20 bg-muted px-4 py-3 font-medium whitespace-nowrap shadow-[-12px_0_18px_-18px_rgba(0,0,0,0.8)]">
-                    操作
-                  </th>
-                </tr>
-              </thead>
-              <tbody>
-                {prompts.length === 0 ? (
-                  <tr>
-                    <td
-                      colSpan={8}
-                      className="px-4 py-12 text-center text-muted-foreground"
-                    >
-                      暂无数据，试试调整筛选条件或新建 Prompt
-                    </td>
-                  </tr>
-                ) : (
-                  prompts.map((prompt) => (
-                    <tr
-                      key={prompt.id}
-                      className="border-b border-border/70 last:border-0"
-                    >
-                      <td className="px-4 py-3 text-muted-foreground">
-                        {prompt.id}
-                      </td>
-                      <td className="px-4 py-3">
-                        <div className="w-full min-w-0">
-                          <p className="truncate font-medium">{prompt.title}</p>
-                          <p className="mt-1 truncate text-xs text-muted-foreground">
-                            {prompt.prompt}
-                          </p>
-                        </div>
-                      </td>
-                      <td className="px-4 py-3 whitespace-nowrap">
-                        {getModelLabel(prompt.model)}
-                      </td>
-                      <td className="px-4 py-3">
-                        <div className="flex max-w-[180px] flex-wrap gap-1">
-                          {parsePromptTags(prompt.tags).length > 0 ? (
-                            parsePromptTags(prompt.tags)
-                              .slice(0, 3)
-                              .map((tag) => (
-                                <Badge key={tag} variant="secondary">
-                                  {tag}
-                                </Badge>
-                              ))
-                          ) : (
-                            <span className="text-muted-foreground">-</span>
-                          )}
-                        </div>
-                      </td>
-                      <td className="px-4 py-3 whitespace-nowrap">
-                        {prompt.images.length}
-                      </td>
-                      <td className="px-4 py-3">
-                        <PromptDraftSwitch
-                          promptId={prompt.id}
-                          draft={prompt.draft}
-                        />
-                      </td>
-                      <td className="px-4 py-3 text-muted-foreground whitespace-nowrap">
-                        {format(prompt.created_at, 'yyyy-MM-dd HH:mm')}
-                      </td>
-                      <td className="sticky right-0 z-10 bg-card px-4 py-3 shadow-[-12px_0_18px_-18px_rgba(0,0,0,0.8)]">
-                        <Button
-                          render={
-                            <Link
-                              to="/admin/prompts/$id/edit"
-                              params={{ id: String(prompt.id) }}
-                            />
-                          }
-                          nativeButton={false}
-                          variant="outline"
-                          size="sm"
-                        >
-                          <Pencil data-icon="inline-start" />
-                          编辑
-                        </Button>
-                      </td>
-                    </tr>
-                  ))
-                )}
-              </tbody>
-            </table>
+          <div className='flex shrink-0 gap-2 lg:ml-2'>
+            <Button type='submit' className='min-w-24'>
+              <Search data-icon='inline-start' />
+              查询
+            </Button>
+            <Button type='button' variant='outline' className='min-w-24' onClick={handleReset}>
+              重置
+            </Button>
           </div>
         </div>
+      </form>
+
+      <div className='border-border bg-card overflow-hidden rounded-xl border'>
+        <div className='overflow-x-auto'>
+          <table className='w-full min-w-[1080px] table-fixed text-left text-sm'>
+            <colgroup>
+              <col className='w-16' />
+              <col className='w-[420px]' />
+              <col className='w-36' />
+              <col className='w-32' />
+              <col className='w-20' />
+              <col className='w-36' />
+              <col className='w-40' />
+              <col className='w-32' />
+            </colgroup>
+            <thead className='border-border bg-muted/40 border-b'>
+              <tr>
+                <th className='px-4 py-3 font-medium whitespace-nowrap'>ID</th>
+                <th className='px-4 py-3 font-medium whitespace-nowrap'>标题</th>
+                <th className='px-4 py-3 font-medium whitespace-nowrap'>模型</th>
+                <th className='px-4 py-3 font-medium whitespace-nowrap'>标签</th>
+                <th className='px-4 py-3 font-medium whitespace-nowrap'>图片</th>
+                <th className='px-4 py-3 font-medium whitespace-nowrap'>状态</th>
+                <th className='px-4 py-3 font-medium whitespace-nowrap'>创建时间</th>
+                <th className='bg-muted sticky right-0 z-20 px-4 py-3 font-medium whitespace-nowrap shadow-[-12px_0_18px_-18px_rgba(0,0,0,0.8)]'>
+                  操作
+                </th>
+              </tr>
+            </thead>
+            <tbody>
+              {prompts.length === 0 ? (
+                <tr>
+                  <td colSpan={8} className='text-muted-foreground px-4 py-12 text-center'>
+                    暂无数据，试试调整筛选条件或新建 Prompt
+                  </td>
+                </tr>
+              ) : (
+                prompts.map((prompt) => (
+                  <tr key={prompt.id} className='border-border/70 border-b last:border-0'>
+                    <td className='text-muted-foreground px-4 py-3'>{prompt.id}</td>
+                    <td className='px-4 py-3'>
+                      <div className='w-full min-w-0'>
+                        <p className='truncate font-medium'>{prompt.title}</p>
+                        <p className='text-muted-foreground mt-1 truncate text-xs'>
+                          {prompt.prompt}
+                        </p>
+                      </div>
+                    </td>
+                    <td className='px-4 py-3 whitespace-nowrap'>{getModelLabel(prompt.model)}</td>
+                    <td className='px-4 py-3'>
+                      <div className='flex max-w-[180px] flex-wrap gap-1'>
+                        {parsePromptTags(prompt.tags).length > 0 ? (
+                          parsePromptTags(prompt.tags)
+                            .slice(0, 3)
+                            .map((tag) => (
+                              <Badge key={tag} variant='secondary'>
+                                {tag}
+                              </Badge>
+                            ))
+                        ) : (
+                          <span className='text-muted-foreground'>-</span>
+                        )}
+                      </div>
+                    </td>
+                    <td className='px-4 py-3 whitespace-nowrap'>{prompt.images.length}</td>
+                    <td className='px-4 py-3'>
+                      <PromptDraftSwitch promptId={prompt.id} draft={prompt.draft} />
+                    </td>
+                    <td className='text-muted-foreground px-4 py-3 whitespace-nowrap'>
+                      {format(prompt.created_at, 'yyyy-MM-dd HH:mm')}
+                    </td>
+                    <td className='bg-card sticky right-0 z-10 px-4 py-3 shadow-[-12px_0_18px_-18px_rgba(0,0,0,0.8)]'>
+                      <Button
+                        render={
+                          <Link to='/admin/prompts/$id/edit' params={{ id: String(prompt.id) }} />
+                        }
+                        nativeButton={false}
+                        variant='outline'
+                        size='sm'
+                      >
+                        <Pencil data-icon='inline-start' />
+                        编辑
+                      </Button>
+                    </td>
+                  </tr>
+                ))
+              )}
+            </tbody>
+          </table>
+        </div>
+      </div>
     </AdminPageShell>
   )
 }

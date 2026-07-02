@@ -1,31 +1,25 @@
-import { useEffect, useState } from "react";
-import type { DarkVeilProps } from "@/components/DarkVeil";
+import { useEffect, useState } from 'react'
+
+import type { DarkVeilProps } from '@/components/DarkVeil'
 
 type DarkVeilBackgroundProps = DarkVeilProps & {
-  className?: string;
-};
+  className?: string
+}
 
-export function DarkVeilBackground({
-  className,
-  ...props
-}: DarkVeilBackgroundProps) {
-  const [DarkVeil, setDarkVeil] = useState<
-    typeof import("@/components/DarkVeil").default | null
-  >(null);
+export function DarkVeilBackground({ className, ...props }: DarkVeilBackgroundProps) {
+  const [DarkVeil, setDarkVeil] = useState<typeof import('@/components/DarkVeil').default | null>(
+    null,
+  )
 
   useEffect(() => {
-    import("@/components/DarkVeil").then((module) => {
-      setDarkVeil(() => module.default);
-    });
-  }, []);
+    import('@/components/DarkVeil').then((module) => {
+      setDarkVeil(() => module.default)
+    })
+  }, [])
 
   return (
     <div className={className}>
-      {DarkVeil ? (
-        <DarkVeil {...props} />
-      ) : (
-        <div className="size-full bg-background" />
-      )}
+      {DarkVeil ? <DarkVeil {...props} /> : <div className='bg-background size-full' />}
     </div>
-  );
+  )
 }

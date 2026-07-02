@@ -1,0 +1,27 @@
+{
+  "$schema": "./node_modules/oxlint/configuration_schema.json",
+  "plugins": ["typescript", "unicorn", "oxc", "react", "import"],
+  "categories": {
+    "correctness": "error"
+  },
+  "env": {
+    "builtin": true,
+    "browser": true
+  },
+  "settings": {
+    "react": {
+      "version": "19.2"
+    }
+  },
+  "ignorePatterns": [
+    "dist/**",
+    "node_modules/**",
+    ".wrangler/**",
+    ".nitro/**",
+    ".output/**",
+    ".tanstack/**",
+    "src/routeTree.gen.ts",
+    "worker-configuration.d.ts"
+  ],
+  "rules": {}
+}

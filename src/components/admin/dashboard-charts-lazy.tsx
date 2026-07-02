@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react'
+
 import type { DashboardStats } from '@/lib/dashboard.functions'
 
 type DashboardChartsLazyProps = {
@@ -18,11 +19,11 @@ export function DashboardChartsLazy({ stats }: DashboardChartsLazyProps) {
 
   if (!Charts) {
     return (
-      <div className="grid gap-6 xl:grid-cols-2">
+      <div className='grid gap-6 xl:grid-cols-2'>
         {Array.from({ length: 3 }).map((_, index) => (
           <div
             key={index}
-            className={`h-72 animate-pulse rounded-xl border border-border bg-muted/30 ${
+            className={`border-border bg-muted/30 h-72 animate-pulse rounded-xl border ${
               index === 2 ? 'xl:col-span-2' : ''
             }`}
           />

@@ -1,5 +1,6 @@
 import { createServerFn } from '@tanstack/react-start'
 import { z } from 'zod'
+
 import {
   clearSessionCookie,
   createSessionToken,
@@ -29,18 +30,16 @@ function timingSafeEqual(a: string, b: string): boolean {
   return result === 0
 }
 
-export const getAuthFn = createServerFn({ method: 'GET' }).handler(
-  async (): Promise<AuthState> => {
-    const { sessionSecret } = await getEnvSecrets()
-    if (!sessionSecret) return { isAuthenticated: false }
+export const getAuthFn = createServerFn({ method: 'GET' }).handler(async (): Promise<AuthState> => {
+  const { sessionSecret } = await getEnvSecrets()
+  if (!sessionSecret) return { isAuthenticated: false }
 
-    const token = readSessionToken()
-    if (!token) return { isAuthenticated: false }
+  const token = readSessionToken()
+  if (!token) return { isAuthenticated: false }
 
-    const valid = await verifySessionToken(sessionSecret, token)
-    return { isAuthenticated: valid }
-  },
-)
+  const valid = await verifySessionToken(sessionSecret, token)
+  return { isAuthenticated: valid }
+})
 
 export const loginFn = createServerFn({ method: 'POST' })
   .validator(z.object({ password: z.string().min(1, '请输入授权码') }))

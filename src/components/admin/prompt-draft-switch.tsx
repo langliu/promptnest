@@ -1,8 +1,9 @@
 import { useRouter } from '@tanstack/react-router'
 import { useServerFn } from '@tanstack/react-start'
 import { useState } from 'react'
-import { updatePromptDraftFn } from '@/lib/prompts.functions'
+
 import { Switch } from '@/components/ui/switch'
+import { updatePromptDraftFn } from '@/lib/prompts.functions'
 import { cn } from '@/lib/utils'
 
 type PromptDraftSwitchProps = {
@@ -32,19 +33,14 @@ export function PromptDraftSwitch({ promptId, draft }: PromptDraftSwitchProps) {
   }
 
   return (
-    <div className="flex items-center gap-2.5">
+    <div className='flex items-center gap-2.5'>
       <Switch
         checked={published}
         onCheckedChange={handleCheckedChange}
         disabled={isUpdating}
         aria-label={published ? '已发布' : '草稿'}
       />
-      <span
-        className={cn(
-          'text-xs',
-          published ? 'text-foreground' : 'text-muted-foreground',
-        )}
-      >
+      <span className={cn('text-xs', published ? 'text-foreground' : 'text-muted-foreground')}>
         {published ? '已发布' : '草稿'}
       </span>
     </div>

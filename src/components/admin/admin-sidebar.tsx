@@ -1,5 +1,6 @@
 import { Link, useRouterState } from '@tanstack/react-router'
 import { ArrowLeft, FileText, LayoutDashboard } from 'lucide-react'
+
 import { AppLogoMark } from '@/components/app-logo'
 import { cn } from '@/lib/utils'
 
@@ -8,8 +9,7 @@ const menuItems = [
     to: '/admin',
     label: '仪表盘',
     icon: LayoutDashboard,
-    match: (pathname: string) =>
-      pathname === '/admin' || pathname === '/admin/',
+    match: (pathname: string) => pathname === '/admin' || pathname === '/admin/',
   },
   {
     to: '/admin/prompts',
@@ -25,17 +25,17 @@ export function AdminSidebar() {
   })
 
   return (
-    <aside className="flex h-screen w-60 shrink-0 flex-col border-r border-border bg-sidebar">
-      <div className="flex h-15 items-center gap-2.5 border-b border-border px-4">
-        <AppLogoMark className="size-7" />
-        <div className="min-w-0">
-          <p className="truncate text-sm font-semibold">PromptNest</p>
-          <p className="truncate text-xs text-muted-foreground">管理后台</p>
+    <aside className='border-border bg-sidebar flex h-screen w-60 shrink-0 flex-col border-r'>
+      <div className='border-border flex h-15 items-center gap-2.5 border-b px-4'>
+        <AppLogoMark className='size-7' />
+        <div className='min-w-0'>
+          <p className='truncate text-sm font-semibold'>PromptNest</p>
+          <p className='text-muted-foreground truncate text-xs'>管理后台</p>
         </div>
       </div>
 
-      <nav className="flex-1 space-y-1 p-3">
-        <p className="mb-2 px-2 text-xs font-medium tracking-wide text-muted-foreground uppercase">
+      <nav className='flex-1 space-y-1 p-3'>
+        <p className='text-muted-foreground mb-2 px-2 text-xs font-medium tracking-wide uppercase'>
           菜单
         </p>
         {menuItems.map((item) => {
@@ -53,22 +53,21 @@ export function AdminSidebar() {
                   : 'text-sidebar-foreground/75 hover:bg-sidebar-accent/60 hover:text-sidebar-accent-foreground',
               )}
             >
-              <Icon className="size-4 shrink-0" />
+              <Icon className='size-4 shrink-0' />
               {item.label}
             </Link>
           )
         })}
       </nav>
 
-      <div className="space-y-1 border-t border-border p-3">
+      <div className='border-border space-y-1 border-t p-3'>
         <Link
-          to="/"
-          className="flex items-center gap-2.5 rounded-lg px-3 py-2 text-sm text-sidebar-foreground/75 transition-colors hover:bg-sidebar-accent/60 hover:text-sidebar-accent-foreground"
+          to='/'
+          className='text-sidebar-foreground/75 hover:bg-sidebar-accent/60 hover:text-sidebar-accent-foreground flex items-center gap-2.5 rounded-lg px-3 py-2 text-sm transition-colors'
         >
-          <ArrowLeft className="size-4" />
+          <ArrowLeft className='size-4' />
           返回前台
         </Link>
-
       </div>
     </aside>
   )

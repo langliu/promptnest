@@ -1,31 +1,25 @@
-import { useEffect, useState } from "react";
-import type { FerrofluidProps } from "@/components/Ferrofluid";
+import { useEffect, useState } from 'react'
+
+import type { FerrofluidProps } from '@/components/Ferrofluid'
 
 type FerrofluidBackgroundProps = FerrofluidProps & {
-  className?: string;
-};
+  className?: string
+}
 
-export function FerrofluidBackground({
-  className,
-  ...props
-}: FerrofluidBackgroundProps) {
+export function FerrofluidBackground({ className, ...props }: FerrofluidBackgroundProps) {
   const [Ferrofluid, setFerrofluid] = useState<
-    typeof import("@/components/Ferrofluid").default | null
-  >(null);
+    typeof import('@/components/Ferrofluid').default | null
+  >(null)
 
   useEffect(() => {
-    import("@/components/Ferrofluid").then((module) => {
-      setFerrofluid(() => module.default);
-    });
-  }, []);
+    import('@/components/Ferrofluid').then((module) => {
+      setFerrofluid(() => module.default)
+    })
+  }, [])
 
   return (
     <div className={className}>
-      {Ferrofluid ? (
-        <Ferrofluid {...props} />
-      ) : (
-        <div className="size-full bg-background" />
-      )}
+      {Ferrofluid ? <Ferrofluid {...props} /> : <div className='bg-background size-full' />}
     </div>
-  );
+  )
 }

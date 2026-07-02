@@ -1,10 +1,12 @@
 import { createServerFn } from '@tanstack/react-start'
-import { and, count, desc, gte, inArray, isNotNull, ne } from 'drizzle-orm'
 import { subDays, format, startOfDay } from 'date-fns'
+import { and, count, desc, gte, inArray, isNotNull, ne } from 'drizzle-orm'
+
 import { authMiddleware } from '@/lib/auth.middleware'
 import { formatDbError, getDb } from '@/lib/db'
 import { getModelLabel } from '@/lib/models'
 import { parsePromptTags } from '@/lib/prompt-tags'
+
 import { prompt_images, prompts } from '../../drizzle/schema'
 
 export type DashboardStats = {
@@ -79,12 +81,8 @@ export const getDashboardStatsFn = createServerFn({ method: 'GET' })
       const last30Days = subDays(now, 30)
       const trendStart = subDays(startOfDay(now), 13)
 
-      const [promptCountRow] = await db
-        .select({ count: count() })
-        .from(prompts)
-      const [imageCountRow] = await db
-        .select({ count: count() })
-        .from(prompt_images)
+      const [promptCountRow] = await db.select({ count: count() }).from(prompts)
+      const [imageCountRow] = await db.select({ count: count() }).from(prompt_images)
       const [last7DaysRow] = await db
         .select({ count: count() })
         .from(prompts)
@@ -137,9 +135,7 @@ export const getDashboardStatsFn = createServerFn({ method: 'GET' })
               .groupBy(prompt_images.prompt_id)
           : []
 
-      const imageCountByPromptId = new Map(
-        imageCountRows.map((row) => [row.prompt_id, row.count]),
-      )
+      const imageCountByPromptId = new Map(imageCountRows.map((row) => [row.prompt_id, row.count]))
 
       const tagCounter = new Map<string, number>()
       for (const row of tagRows) {
@@ -163,9 +159,7 @@ export const getDashboardStatsFn = createServerFn({ method: 'GET' })
           promptsLast7Days: last7DaysRow?.count ?? 0,
           promptsLast30Days: last30DaysRow?.count ?? 0,
           avgImagesPerPrompt:
-            totalPrompts > 0
-              ? Math.round((totalImages / totalPrompts) * 10) / 10
-              : 0,
+            totalPrompts > 0 ? Math.round((totalImages / totalPrompts) * 10) / 10 : 0,
         },
         modelDistribution: modelRows.map((row) => ({
           model: row.model,

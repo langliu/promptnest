@@ -1,12 +1,8 @@
 import { ImagePlus, Loader2, X } from 'lucide-react'
 import { useRef, useState } from 'react'
-import {
-  ALLOWED_IMAGE_TYPES,
-  MAX_IMAGE_SIZE_BYTES,
-  MAX_PROMPT_IMAGES,
-  validateImageFile,
-} from '@/lib/images'
+
 import { Button } from '@/components/ui/button'
+import { ALLOWED_IMAGE_TYPES, MAX_PROMPT_IMAGES, validateImageFile } from '@/lib/images'
 import { cn } from '@/lib/utils'
 
 export type PendingImage = {
@@ -78,9 +74,9 @@ export function ImageUpload({
   }
 
   return (
-    <div className="space-y-3">
+    <div className='space-y-3'>
       <div
-        role="button"
+        role='button'
         tabIndex={disabled ? -1 : 0}
         onKeyDown={(e) => {
           if (e.key === 'Enter' || e.key === ' ') {
@@ -107,19 +103,18 @@ export function ImageUpload({
           disabled && 'pointer-events-none opacity-60',
         )}
       >
-        <ImagePlus className="mb-3 size-8 text-muted-foreground" />
-        <p className="text-sm font-medium">点击或拖拽上传图片</p>
-        <p className="mt-1 text-xs text-muted-foreground">
-          支持 JPG / PNG / WebP / GIF，单张最大 5MB，最多{' '}
-          {MAX_PROMPT_IMAGES} 张
+        <ImagePlus className='text-muted-foreground mb-3 size-8' />
+        <p className='text-sm font-medium'>点击或拖拽上传图片</p>
+        <p className='text-muted-foreground mt-1 text-xs'>
+          支持 JPG / PNG / WebP / GIF，单张最大 5MB，最多 {MAX_PROMPT_IMAGES} 张
         </p>
         <input
-          id="image-upload-input"
+          id='image-upload-input'
           ref={inputRef}
-          type="file"
+          type='file'
           accept={ALLOWED_IMAGE_TYPES.join(',')}
           multiple
-          className="hidden"
+          className='hidden'
           disabled={disabled}
           onChange={(e) => {
             if (e.target.files) addFiles(e.target.files)
@@ -128,25 +123,25 @@ export function ImageUpload({
         />
       </div>
 
-      {error && <p className="text-sm text-destructive">{error}</p>}
+      {error && <p className='text-destructive text-sm'>{error}</p>}
 
       {images.length > 0 && (
-        <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 md:grid-cols-4">
+        <div className='grid grid-cols-2 gap-3 sm:grid-cols-3 md:grid-cols-4'>
           {images.map((image) => (
             <div
               key={image.id}
-              className="group relative aspect-square overflow-hidden rounded-lg border bg-muted"
+              className='group bg-muted relative aspect-square overflow-hidden rounded-lg border'
             >
               <img
                 src={image.previewUrl}
                 alt={image.file.name}
-                className="size-full object-cover"
+                className='size-full object-cover'
               />
               <Button
-                type="button"
-                variant="destructive"
-                size="icon-xs"
-                className="absolute top-2 right-2 opacity-0 transition-opacity group-hover:opacity-100"
+                type='button'
+                variant='destructive'
+                size='icon-xs'
+                className='absolute top-2 right-2 opacity-0 transition-opacity group-hover:opacity-100'
                 disabled={disabled}
                 onClick={(e) => {
                   e.stopPropagation()
@@ -155,7 +150,7 @@ export function ImageUpload({
               >
                 <X />
               </Button>
-              <div className="absolute inset-x-0 bottom-0 bg-black/60 px-2 py-1 text-xs text-white truncate">
+              <div className='absolute inset-x-0 bottom-0 truncate bg-black/60 px-2 py-1 text-xs text-white'>
                 {(image.file.size / 1024).toFixed(0)} KB
               </div>
             </div>
@@ -164,8 +159,8 @@ export function ImageUpload({
       )}
 
       {disabled && images.length > 0 && (
-        <div className="flex items-center gap-2 text-sm text-muted-foreground">
-          <Loader2 className="size-4 animate-spin" />
+        <div className='text-muted-foreground flex items-center gap-2 text-sm'>
+          <Loader2 className='size-4 animate-spin' />
           正在上传图片...
         </div>
       )}

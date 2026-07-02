@@ -20,9 +20,7 @@ async function ensureSchema(d1: D1Database) {
 
 async function initSchema(d1: D1Database) {
   const table = await d1
-    .prepare(
-      "SELECT name FROM sqlite_master WHERE type = 'table' AND name = 'prompts'",
-    )
+    .prepare("SELECT name FROM sqlite_master WHERE type = 'table' AND name = 'prompts'")
     .first<{ name: string }>()
 
   if (table) {
@@ -54,18 +52,12 @@ async function initSchema(d1: D1Database) {
 }
 
 async function ensureDraftColumn(d1: D1Database) {
-  const columns = await d1
-    .prepare('PRAGMA table_info(prompts)')
-    .all<{ name: string }>()
+  const columns = await d1.prepare('PRAGMA table_info(prompts)').all<{ name: string }>()
 
   const hasDraft = columns.results?.some((column) => column.name === 'draft')
   if (hasDraft) return
 
-  await d1
-    .prepare(
-      'ALTER TABLE prompts ADD COLUMN draft integer NOT NULL DEFAULT 0',
-    )
-    .run()
+  await d1.prepare('ALTER TABLE prompts ADD COLUMN draft integer NOT NULL DEFAULT 0').run()
 }
 
 export function formatDbError(error: unknown): string {

@@ -1,8 +1,4 @@
-import {
-  getRequest,
-  getRequestHeader,
-  setResponseHeader,
-} from '@tanstack/react-start/server'
+import { getRequest, getRequestHeader, setResponseHeader } from '@tanstack/react-start/server'
 
 export const SESSION_COOKIE = 'promptnest-session'
 const ONE_DAY = 60 * 60 * 24
@@ -26,11 +22,7 @@ async function hmacSign(secret: string, payload: string): Promise<string> {
     false,
     ['sign'],
   )
-  const signature = await crypto.subtle.sign(
-    'HMAC',
-    key,
-    encoder.encode(payload),
-  )
+  const signature = await crypto.subtle.sign('HMAC', key, encoder.encode(payload))
   return btoa(String.fromCharCode(...new Uint8Array(signature)))
 }
 
@@ -47,10 +39,7 @@ export async function createSessionToken(secret: string): Promise<string> {
   return hmacSign(secret, SESSION_PAYLOAD)
 }
 
-export async function verifySessionToken(
-  secret: string,
-  token: string,
-): Promise<boolean> {
+export async function verifySessionToken(secret: string, token: string): Promise<boolean> {
   const expected = await createSessionToken(secret)
   return timingSafeEqual(expected, token)
 }
@@ -70,13 +59,7 @@ export function setSessionCookie(token: string) {
 
 export function clearSessionCookie() {
   const secure = shouldUseSecureCookie()
-  const parts = [
-    `${SESSION_COOKIE}=`,
-    'HttpOnly',
-    'SameSite=Lax',
-    'Path=/',
-    'Max-Age=0',
-  ]
+  const parts = [`${SESSION_COOKIE}=`, 'HttpOnly', 'SameSite=Lax', 'Path=/', 'Max-Age=0']
   if (secure) parts.push('Secure')
   setResponseHeader('Set-Cookie', parts.join('; '))
 }

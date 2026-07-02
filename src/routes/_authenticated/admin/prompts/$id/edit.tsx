@@ -1,17 +1,12 @@
-import {
-  createFileRoute,
-  Link,
-  notFound,
-  useNavigate,
-  useRouter,
-} from '@tanstack/react-router'
+import { createFileRoute, Link, notFound, useNavigate, useRouter } from '@tanstack/react-router'
 import { useServerFn } from '@tanstack/react-start'
 import { ArrowLeft } from 'lucide-react'
 import { z } from 'zod'
+
 import { AdminPageShell } from '@/components/admin/admin-page-shell'
 import { PromptForm } from '@/components/prompt-form'
-import { getPromptByIdFn, updatePromptFn } from '@/lib/prompts.functions'
 import { Button } from '@/components/ui/button'
+import { getPromptByIdFn, updatePromptFn } from '@/lib/prompts.functions'
 
 export const Route = createFileRoute('/_authenticated/admin/prompts/$id/edit')({
   params: {
@@ -37,31 +32,29 @@ function AdminEditPromptPage() {
   return (
     <AdminPageShell
       header={
-        <div className="flex items-center gap-3">
+        <div className='flex items-center gap-3'>
           <Button
-            render={<Link to="/admin/prompts" />}
+            render={<Link to='/admin/prompts' />}
             nativeButton={false}
-            variant="ghost"
-            size="icon-sm"
-            aria-label="返回列表"
+            variant='ghost'
+            size='icon-sm'
+            aria-label='返回列表'
           >
-            <ArrowLeft className="size-4" />
+            <ArrowLeft className='size-4' />
           </Button>
           <div>
-            <h1 className="text-2xl font-semibold tracking-tight">
-              编辑 Prompt
-            </h1>
-            <p className="mt-1 text-sm text-muted-foreground">
+            <h1 className='text-2xl font-semibold tracking-tight'>编辑 Prompt</h1>
+            <p className='text-muted-foreground mt-1 text-sm'>
               修改 #{prompt.id} {prompt.title}
             </p>
           </div>
         </div>
       }
-      contentClassName="p-6"
+      contentClassName='p-6'
     >
-      <div className="mx-auto w-full max-w-3xl">
+      <div className='mx-auto w-full max-w-3xl'>
         <PromptForm
-          mode="edit"
+          mode='edit'
           initialValues={{
             title: prompt.title,
             prompt: prompt.prompt,

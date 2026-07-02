@@ -1,8 +1,9 @@
 import { createServerFn } from '@tanstack/react-start'
-import { authMiddleware } from '@/lib/auth.middleware'
-import { formatDbError, getDb } from '@/lib/db'
 import { and, desc, eq, inArray, like, or } from 'drizzle-orm'
 import { z } from 'zod'
+
+import { authMiddleware } from '@/lib/auth.middleware'
+import { formatDbError, getDb } from '@/lib/db'
 import {
   buildPromptImageKey,
   getImageUrl,
@@ -10,6 +11,7 @@ import {
   validateImageFile,
 } from '@/lib/images'
 import { modelIdSchema } from '@/lib/models'
+
 import { prompt_images, prompts } from '../../drizzle/schema'
 
 async function getR2() {
@@ -40,9 +42,7 @@ function parseCreatePromptFormData(data: FormData) {
       tags: tags || undefined,
     })
 
-  const imageFiles = data
-    .getAll('images')
-    .filter((entry): entry is File => entry instanceof File)
+  const imageFiles = data.getAll('images').filter((entry): entry is File => entry instanceof File)
 
   if (imageFiles.length > MAX_PROMPT_IMAGES) {
     throw new Error(`最多上传 ${MAX_PROMPT_IMAGES} 张图片`)
@@ -87,9 +87,7 @@ function parseUpdatePromptFormData(data: FormData) {
         : [],
     })
 
-  const imageFiles = data
-    .getAll('images')
-    .filter((entry): entry is File => entry instanceof File)
+  const imageFiles = data.getAll('images').filter((entry): entry is File => entry instanceof File)
 
   if (imageFiles.length > MAX_PROMPT_IMAGES) {
     throw new Error(`最多上传 ${MAX_PROMPT_IMAGES} 张图片`)
@@ -108,9 +106,7 @@ const promptSearchSchema = z.object({
   model: z.string().optional(),
 })
 
-async function fetchPromptsWithImages(
-  promptRows: (typeof prompts.$inferSelect)[],
-) {
+async function fetchPromptsWithImages(promptRows: (typeof prompts.$inferSelect)[]) {
   if (promptRows.length === 0) return []
 
   const promptIds = promptRows.map((row) => row.id)
@@ -181,25 +177,23 @@ export const listPromptsAdminFn = createServerFn({ method: 'GET' })
     }
   })
 
-export const getAllPromptsFn = createServerFn({ method: 'GET' }).handler(
-  async () => {
-    try {
-      const db = await getDb()
-      if (!db) return []
+export const getAllPromptsFn = createServerFn({ method: 'GET' }).handler(async () => {
+  try {
+    const db = await getDb()
+    if (!db) return []
 
-      const promptRows = await db
-        .select()
-        .from(prompts)
-        .where(eq(prompts.draft, false))
-        .orderBy(desc(prompts.created_at))
-        .limit(50)
+    const promptRows = await db
+      .select()
+      .from(prompts)
+      .where(eq(prompts.draft, false))
+      .orderBy(desc(prompts.created_at))
+      .limit(50)
 
-      return fetchPromptsWithImages(promptRows)
-    } catch {
-      return []
-    }
-  },
-)
+    return fetchPromptsWithImages(promptRows)
+  } catch {
+    return []
+  }
+})
 
 export const getPromptByIdFn = createServerFn({ method: 'GET' })
   .validator((id: number) => id)
@@ -208,11 +202,7 @@ export const getPromptByIdFn = createServerFn({ method: 'GET' })
       const db = await getDb()
       if (!db) return null
 
-      const result = await db
-        .select()
-        .from(prompts)
-        .where(eq(prompts.id, id))
-        .limit(1)
+      const result = await db.select().from(prompts).where(eq(prompts.id, id)).limit(1)
 
       const prompt = result[0]
       if (!prompt) return null
@@ -324,11 +314,7 @@ export const updatePromptFn = createServerFn({ method: 'POST' })
         throw new Error('数据库不可用，请确认本地 D1 已启动')
       }
 
-      const existing = await db
-        .select()
-        .from(prompts)
-        .where(eq(prompts.id, data.id))
-        .limit(1)
+      const existing = await db.select().from(prompts).where(eq(prompts.id, data.id)).limit(1)
 
       if (!existing[0]) {
         throw new Error('Prompt 不存在')
@@ -341,9 +327,7 @@ export const updatePromptFn = createServerFn({ method: 'POST' })
         .orderBy(prompt_images.sort_order)
 
       const remainingCount =
-        currentImages.length -
-        data.removeImageIds.length +
-        data.imageFiles.length
+        currentImages.length - data.removeImageIds.length + data.imageFiles.length
 
       if (remainingCount > MAX_PROMPT_IMAGES) {
         throw new Error(`最多保留 ${MAX_PROMPT_IMAGES} 张图片`)
@@ -368,9 +352,7 @@ export const updatePromptFn = createServerFn({ method: 'POST' })
         })
         .where(eq(prompts.id, data.id))
 
-      const imagesToRemove = currentImages.filter((image) =>
-        data.removeImageIds.includes(image.id),
-      )
+      const imagesToRemove = currentImages.filter((image) => data.removeImageIds.includes(image.id))
 
       for (const image of imagesToRemove) {
         if (bucket) {

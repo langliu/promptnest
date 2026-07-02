@@ -31,17 +31,14 @@ export const MODEL_FILTER_SELECT_ITEMS = [
   ...MODEL_SELECT_ITEMS,
 ] as const
 
-export const modelIdSchema = z.enum(
-  modelIds as [PromptModelId, ...PromptModelId[]],
-  { message: '请选择有效的模型' },
-)
+export const modelIdSchema = z.enum(modelIds as [PromptModelId, ...PromptModelId[]], {
+  message: '请选择有效的模型',
+})
 
 const modelById = new Map(PROMPT_MODELS.map((model) => [model.id, model]))
 
 /** 历史数据可能存的是 label 或旧模型名，展示时做兼容 */
-const modelByLabel = new Map(
-  PROMPT_MODELS.map((model) => [model.label.toLowerCase(), model]),
-)
+const modelByLabel = new Map(PROMPT_MODELS.map((model) => [model.label.toLowerCase(), model]))
 
 export function getModelOption(modelId: PromptModelId) {
   return modelById.get(modelId)!
@@ -58,8 +55,5 @@ export function getModelLabel(modelValue: string) {
 }
 
 export function isKnownModel(modelValue: string) {
-  return (
-    modelById.has(modelValue as PromptModelId) ||
-    modelByLabel.has(modelValue.toLowerCase())
-  )
+  return modelById.has(modelValue as PromptModelId) || modelByLabel.has(modelValue.toLowerCase())
 }

@@ -20,9 +20,7 @@ export function GalleryCardTags({
   const visibleTags = parsedTags.slice(0, MAX_VISIBLE_TAGS)
   const hiddenCount = parsedTags.length - visibleTags.length
 
-  const badgeClass = overlay
-    ? 'border-white/15 bg-black/55 text-white backdrop-blur-md'
-    : undefined
+  const badgeClass = overlay ? 'border-white/15 bg-black/55 text-white backdrop-blur-md' : undefined
 
   return (
     <div
@@ -38,7 +36,7 @@ export function GalleryCardTags({
       {visibleTags.map((tag) => (
         <Badge
           key={tag}
-          variant="outline"
+          variant='outline'
           className={cn(
             'max-w-full truncate font-normal',
             overlay
@@ -50,10 +48,7 @@ export function GalleryCardTags({
         </Badge>
       ))}
       {hiddenCount > 0 && (
-        <Badge
-          variant="ghost"
-          className={overlay ? 'text-white/80' : 'text-muted-foreground'}
-        >
+        <Badge variant='ghost' className={overlay ? 'text-white/80' : 'text-muted-foreground'}>
           +{hiddenCount}
         </Badge>
       )}

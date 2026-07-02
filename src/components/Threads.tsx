@@ -1,5 +1,5 @@
-import { useEffect, useRef } from 'react'
 import { Color, Mesh, Program, Renderer, Triangle } from 'ogl'
+import { useEffect, useRef } from 'react'
 
 export interface ThreadsProps {
   color?: [number, number, number]
@@ -161,11 +161,7 @@ export default function Threads({
       uniforms: {
         iTime: { value: 0 },
         iResolution: {
-          value: new Color(
-            gl.canvas.width,
-            gl.canvas.height,
-            gl.canvas.width / gl.canvas.height,
-          ),
+          value: new Color(gl.canvas.width, gl.canvas.height, gl.canvas.width / gl.canvas.height),
         },
         uColor: { value: new Color(...propsRef.current.color) },
         uAmplitude: { value: propsRef.current.amplitude },
@@ -181,10 +177,7 @@ export default function Threads({
       const { clientWidth, clientHeight } = container
       const baseDpr = Math.min(window.devicePixelRatio || 1, 2)
       const longestSide = Math.max(clientWidth, clientHeight) * baseDpr
-      const dpr =
-        longestSide > MAX_RENDER_DIM
-          ? (baseDpr * MAX_RENDER_DIM) / longestSide
-          : baseDpr
+      const dpr = longestSide > MAX_RENDER_DIM ? (baseDpr * MAX_RENDER_DIM) / longestSide : baseDpr
       renderer.dpr = dpr
       renderer.setSize(clientWidth, clientHeight)
       program.uniforms.iResolution.value.r = gl.canvas.width
@@ -264,7 +257,5 @@ export default function Threads({
     }
   }, [])
 
-  return (
-    <div ref={containerRef} className={className ?? 'relative size-full'} />
-  )
+  return <div ref={containerRef} className={className ?? 'relative size-full'} />
 }
