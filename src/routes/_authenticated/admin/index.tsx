@@ -127,9 +127,7 @@ function AdminDashboardPage() {
                   <Badge variant='secondary'>{prompt.modelLabel}</Badge>
                   <Badge variant='outline'>{prompt.imageCount} 图</Badge>
                   <Button
-                    render={
-                      <Link to='/admin/prompts/$id/edit' params={{ id: String(prompt.id) }} />
-                    }
+                    render={<Link to='/admin/prompts/$id/edit' params={{ id: prompt.id }} />}
                     nativeButton={false}
                     variant='ghost'
                     size='sm'

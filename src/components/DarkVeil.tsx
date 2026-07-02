@@ -73,7 +73,7 @@ void main(){
 }
 `
 
-type Props = {
+export type DarkVeilProps = {
   hueShift?: number
   noiseIntensity?: number
   scanlineIntensity?: number
@@ -91,7 +91,7 @@ export default function DarkVeil({
   scanlineFrequency = 0,
   warpAmount = 0,
   resolutionScale = 1,
-}: Props) {
+}: DarkVeilProps) {
   const ref = useRef<HTMLCanvasElement>(null)
   useEffect(() => {
     const canvas = ref.current as HTMLCanvasElement

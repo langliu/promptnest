@@ -1,7 +1,7 @@
 import { createFileRoute, Link } from '@tanstack/react-router'
 import { format } from 'date-fns'
-import { Pencil, Plus, Search } from 'lucide-react'
-import { useState } from 'react'
+import { ChevronLeft, ChevronRight, Pencil, Plus, Search } from 'lucide-react'
+import { useEffect, useState } from 'react'
 import { z } from 'zod'
 
 import { AdminPageHeader, AdminPageShell } from '@/components/admin/admin-page-shell'
@@ -24,29 +24,43 @@ import { listPromptsAdminFn } from '@/lib/prompts.functions'
 const searchSchema = z.object({
   keyword: z.string().optional(),
   model: z.string().optional(),
+  page: z.coerce.number().int().min(1).optional().catch(undefined),
 })
 
 export const Route = createFileRoute('/_authenticated/admin/prompts/')({
   validateSearch: searchSchema,
-  loaderDeps: ({ search }) => ({ search }),
+  loaderDeps: ({ search }) => ({
+    keyword: search.keyword,
+    model: search.model,
+    page: search.page,
+  }),
   loader: async ({ deps }) => {
-    const prompts = await listPromptsAdminFn({
+    const result = await listPromptsAdminFn({
       data: {
-        keyword: deps.search.keyword,
-        model: deps.search.model,
+        keyword: deps.keyword,
+        model: deps.model,
+        page: deps.page,
       },
     })
-    return { prompts }
+    return {
+      prompts: result.items,
+      pagination: result.pagination,
+    }
   },
   component: AdminPromptsPage,
 })
 
 function AdminPromptsPage() {
-  const { prompts } = Route.useLoaderData()
+  const { prompts, pagination } = Route.useLoaderData()
   const search = Route.useSearch()
   const navigate = Route.useNavigate()
   const [keyword, setKeyword] = useState(search.keyword ?? '')
   const [model, setModel] = useState(search.model ?? 'all')
+
+  useEffect(() => {
+    setKeyword(search.keyword ?? '')
+    setModel(search.model ?? 'all')
+  }, [search.keyword, search.model])
 
   const handleSearch = (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault()
@@ -54,6 +68,7 @@ function AdminPromptsPage() {
       search: {
         keyword: keyword.trim() || undefined,
         model: model === 'all' ? undefined : model,
+        page: undefined,
       },
     })
   }
@@ -61,8 +76,20 @@ function AdminPromptsPage() {
   const handleReset = () => {
     setKeyword('')
     setModel('all')
-    navigate({ search: { keyword: undefined, model: undefined } })
+    navigate({ search: { keyword: undefined, model: undefined, page: undefined } })
   }
+
+  const goToPage = (page: number) => {
+    navigate({
+      search: (previous) => ({
+        ...previous,
+        page: page > 1 ? page : undefined,
+      }),
+    })
+  }
+
+  const firstItem = pagination.total === 0 ? 0 : (pagination.page - 1) * pagination.pageSize + 1
+  const lastItem = Math.min(pagination.page * pagination.pageSize, pagination.total)
 
   return (
     <AdminPageShell
@@ -203,9 +230,7 @@ function AdminPromptsPage() {
                     </td>
                     <td className='bg-card sticky right-0 z-10 px-4 py-3 shadow-[-12px_0_18px_-18px_rgba(0,0,0,0.8)]'>
                       <Button
-                        render={
-                          <Link to='/admin/prompts/$id/edit' params={{ id: String(prompt.id) }} />
-                        }
+                        render={<Link to='/admin/prompts/$id/edit' params={{ id: prompt.id }} />}
                         nativeButton={false}
                         variant='outline'
                         size='sm'
@@ -219,6 +244,41 @@ function AdminPromptsPage() {
               )}
             </tbody>
           </table>
+        </div>
+        <div className='border-border flex flex-col gap-3 border-t px-4 py-3 sm:flex-row sm:items-center sm:justify-between'>
+          <p className='text-muted-foreground text-sm'>
+            共 {pagination.total} 条
+            {pagination.total > 0 && (
+              <>
+                ，当前显示 {firstItem}-{lastItem}
+              </>
+            )}
+          </p>
+          <div className='flex items-center gap-2'>
+            <Button
+              type='button'
+              variant='outline'
+              size='sm'
+              disabled={!pagination.hasPrev}
+              onClick={() => goToPage(pagination.page - 1)}
+            >
+              <ChevronLeft className='size-4' />
+              上一页
+            </Button>
+            <span className='text-muted-foreground min-w-20 text-center text-sm'>
+              {pagination.page} / {pagination.totalPages}
+            </span>
+            <Button
+              type='button'
+              variant='outline'
+              size='sm'
+              disabled={!pagination.hasNext}
+              onClick={() => goToPage(pagination.page + 1)}
+            >
+              下一页
+              <ChevronRight className='size-4' />
+            </Button>
+          </div>
         </div>
       </div>
     </AdminPageShell>

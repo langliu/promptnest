@@ -1,5 +1,5 @@
 import { createServerFn } from '@tanstack/react-start'
-import { and, desc, eq, inArray, like, or } from 'drizzle-orm'
+import { and, count, desc, eq, inArray, like, or } from 'drizzle-orm'
 import { z } from 'zod'
 
 import { authMiddleware } from '@/lib/auth.middleware'
@@ -13,6 +13,8 @@ import {
 import { modelIdSchema } from '@/lib/models'
 
 import { prompt_images, prompts } from '../../drizzle/schema'
+
+const ADMIN_PROMPTS_PAGE_SIZE = 20
 
 async function getR2() {
   const { env } = await import('cloudflare:workers')
@@ -104,6 +106,7 @@ function parseUpdatePromptFormData(data: FormData) {
 const promptSearchSchema = z.object({
   keyword: z.string().optional(),
   model: z.string().optional(),
+  page: z.coerce.number().int().min(1).catch(1),
 })
 
 async function fetchPromptsWithImages(promptRows: (typeof prompts.$inferSelect)[]) {
@@ -146,7 +149,19 @@ export const listPromptsAdminFn = createServerFn({ method: 'GET' })
   .handler(async ({ data }) => {
     try {
       const db = await getDb()
-      if (!db) return []
+      if (!db) {
+        return {
+          items: [],
+          pagination: {
+            page: 1,
+            pageSize: ADMIN_PROMPTS_PAGE_SIZE,
+            total: 0,
+            totalPages: 1,
+            hasPrev: false,
+            hasNext: false,
+          },
+        }
+      }
 
       const filters = []
       const keyword = data.keyword?.trim()
@@ -163,15 +178,34 @@ export const listPromptsAdminFn = createServerFn({ method: 'GET' })
       if (data.model) {
         filters.push(eq(prompts.model, data.model))
       }
+      const where = filters.length > 0 ? and(...filters) : undefined
+      const [{ total = 0 } = { total: 0 }] = await db
+        .select({ total: count() })
+        .from(prompts)
+        .where(where)
+
+      const totalPages = Math.max(1, Math.ceil(total / ADMIN_PROMPTS_PAGE_SIZE))
+      const page = Math.min(data.page, totalPages)
 
       const promptRows = await db
         .select()
         .from(prompts)
-        .where(filters.length > 0 ? and(...filters) : undefined)
+        .where(where)
         .orderBy(desc(prompts.created_at))
-        .limit(200)
+        .limit(ADMIN_PROMPTS_PAGE_SIZE)
+        .offset((page - 1) * ADMIN_PROMPTS_PAGE_SIZE)
 
-      return fetchPromptsWithImages(promptRows)
+      return {
+        items: await fetchPromptsWithImages(promptRows),
+        pagination: {
+          page,
+          pageSize: ADMIN_PROMPTS_PAGE_SIZE,
+          total,
+          totalPages,
+          hasPrev: page > 1,
+          hasNext: page < totalPages,
+        },
+      }
     } catch (error) {
       throw new Error(formatDbError(error))
     }
@@ -196,7 +230,8 @@ export const getAllPromptsFn = createServerFn({ method: 'GET' }).handler(async (
 })
 
 export const getPromptByIdFn = createServerFn({ method: 'GET' })
-  .validator((id: number) => id)
+  .middleware([authMiddleware])
+  .validator(z.number().int().positive())
   .handler(async ({ data: id }) => {
     try {
       const db = await getDb()
