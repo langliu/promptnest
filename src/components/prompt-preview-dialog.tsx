@@ -27,7 +27,7 @@ export type GalleryPrompt = {
   negative_prompt: string | null
   model: string
   tags: string | null
-  images: { id: number; url: string; sort_order: number | null }[]
+  images: { id: number; url: string; thumbnailUrl?: string; sort_order: number | null }[]
 }
 
 type PromptPreviewDialogProps = {

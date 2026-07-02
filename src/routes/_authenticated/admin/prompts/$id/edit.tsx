@@ -77,6 +77,7 @@ function AdminEditPromptPage() {
             }
             for (const image of images) {
               payload.append('images', image.file)
+              payload.append('thumbnails', image.thumbnailFile ?? new File([], 'missing-thumbnail'))
             }
 
             await updatePrompt({ data: payload })

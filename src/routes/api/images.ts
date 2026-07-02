@@ -4,7 +4,9 @@ export const Route = createFileRoute('/api/images')({
   server: {
     handlers: {
       GET: async ({ request }) => {
-        const key = new URL(request.url).searchParams.get('key')
+        const searchParams = new URL(request.url).searchParams
+        const key = searchParams.get('key')
+        const fallbackKey = searchParams.get('fallback')
         if (!key) {
           return new Response('Missing key', { status: 400 })
         }
@@ -15,14 +17,22 @@ export const Route = createFileRoute('/api/images')({
             return new Response('R2 not available', { status: 503 })
           }
 
-          const object = await env.IMAGES.get(key)
+          let servedFallback = false
+          let object = await env.IMAGES.get(key)
+          if (!object && fallbackKey) {
+            object = await env.IMAGES.get(fallbackKey)
+            servedFallback = Boolean(object)
+          }
           if (!object) {
             return new Response('Not found', { status: 404 })
           }
 
           const headers = new Headers()
           object.writeHttpMetadata(headers)
-          headers.set('Cache-Control', 'public, max-age=31536000, immutable')
+          headers.set(
+            'Cache-Control',
+            servedFallback ? 'public, max-age=300' : 'public, max-age=31536000, immutable',
+          )
 
           return new Response(object.body, { headers })
         } catch {

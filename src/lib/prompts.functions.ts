@@ -5,8 +5,10 @@ import { z } from 'zod'
 import { authMiddleware } from '@/lib/auth.middleware'
 import { formatDbError, getDb } from '@/lib/db'
 import {
-  buildPromptImageKey,
+  buildPromptImageKeys,
   getImageUrl,
+  getThumbnailKey,
+  getThumbnailUrl,
   MAX_PROMPT_IMAGES,
   validateImageFile,
 } from '@/lib/images'
@@ -15,6 +17,7 @@ import { modelIdSchema } from '@/lib/models'
 import { prompt_images, prompts } from '../../drizzle/schema'
 
 const ADMIN_PROMPTS_PAGE_SIZE = 20
+const GALLERY_PAGE_SIZE = 24
 
 async function getR2() {
   const { env } = await import('cloudflare:workers')
@@ -45,6 +48,9 @@ function parseCreatePromptFormData(data: FormData) {
     })
 
   const imageFiles = data.getAll('images').filter((entry): entry is File => entry instanceof File)
+  const thumbnailFiles = data
+    .getAll('thumbnails')
+    .map((entry) => (entry instanceof File && entry.size > 0 ? entry : null))
 
   if (imageFiles.length > MAX_PROMPT_IMAGES) {
     throw new Error(`最多上传 ${MAX_PROMPT_IMAGES} 张图片`)
@@ -54,8 +60,13 @@ function parseCreatePromptFormData(data: FormData) {
     const error = validateImageFile(file)
     if (error) throw new Error(error)
   }
+  for (const file of thumbnailFiles) {
+    if (!file) continue
+    const error = validateImageFile(file)
+    if (error) throw new Error(error)
+  }
 
-  return { ...parsed, imageFiles }
+  return { ...parsed, imageFiles, thumbnailFiles }
 }
 
 function parseUpdatePromptFormData(data: FormData) {
@@ -90,6 +101,9 @@ function parseUpdatePromptFormData(data: FormData) {
     })
 
   const imageFiles = data.getAll('images').filter((entry): entry is File => entry instanceof File)
+  const thumbnailFiles = data
+    .getAll('thumbnails')
+    .map((entry) => (entry instanceof File && entry.size > 0 ? entry : null))
 
   if (imageFiles.length > MAX_PROMPT_IMAGES) {
     throw new Error(`最多上传 ${MAX_PROMPT_IMAGES} 张图片`)
@@ -99,8 +113,13 @@ function parseUpdatePromptFormData(data: FormData) {
     const error = validateImageFile(file)
     if (error) throw new Error(error)
   }
+  for (const file of thumbnailFiles) {
+    if (!file) continue
+    const error = validateImageFile(file)
+    if (error) throw new Error(error)
+  }
 
-  return { ...parsed, imageFiles }
+  return { ...parsed, imageFiles, thumbnailFiles }
 }
 
 const promptSearchSchema = z.object({
@@ -108,6 +127,8 @@ const promptSearchSchema = z.object({
   model: z.string().optional(),
   page: z.coerce.number().int().min(1).catch(1),
 })
+
+const gallerySearchSchema = promptSearchSchema
 
 async function fetchPromptsWithImages(promptRows: (typeof prompts.$inferSelect)[]) {
   if (promptRows.length === 0) return []
@@ -124,7 +145,7 @@ async function fetchPromptsWithImages(promptRows: (typeof prompts.$inferSelect)[
 
   const imagesByPromptId = new Map<
     number,
-    { id: number; url: string; sort_order: number | null }[]
+    { id: number; url: string; thumbnailUrl: string; sort_order: number | null }[]
   >()
 
   for (const image of imageRows) {
@@ -132,6 +153,7 @@ async function fetchPromptsWithImages(promptRows: (typeof prompts.$inferSelect)[
     list.push({
       id: image.id,
       url: getImageUrl(image.r2_key),
+      thumbnailUrl: getThumbnailUrl(image.r2_key, image.thumbnail_r2_key),
       sort_order: image.sort_order,
     })
     imagesByPromptId.set(image.prompt_id, list)
@@ -211,23 +233,83 @@ export const listPromptsAdminFn = createServerFn({ method: 'GET' })
     }
   })
 
-export const getAllPromptsFn = createServerFn({ method: 'GET' }).handler(async () => {
-  try {
-    const db = await getDb()
-    if (!db) return []
+export const listGalleryPromptsFn = createServerFn({ method: 'GET' })
+  .validator((input: unknown) => gallerySearchSchema.parse(input ?? {}))
+  .handler(async ({ data }) => {
+    try {
+      const db = await getDb()
+      if (!db) {
+        return {
+          items: [],
+          pagination: {
+            page: 1,
+            pageSize: GALLERY_PAGE_SIZE,
+            total: 0,
+            totalPages: 1,
+            hasPrev: false,
+            hasNext: false,
+          },
+        }
+      }
 
-    const promptRows = await db
-      .select()
-      .from(prompts)
-      .where(eq(prompts.draft, false))
-      .orderBy(desc(prompts.created_at))
-      .limit(50)
+      const filters = [eq(prompts.draft, false)]
+      const keyword = data.keyword?.trim()
+      if (keyword) {
+        const pattern = `%${keyword}%`
+        filters.push(
+          or(
+            like(prompts.title, pattern),
+            like(prompts.prompt, pattern),
+            like(prompts.tags, pattern),
+          )!,
+        )
+      }
+      if (data.model) {
+        filters.push(eq(prompts.model, data.model))
+      }
 
-    return fetchPromptsWithImages(promptRows)
-  } catch {
-    return []
-  }
-})
+      const where = and(...filters)
+      const [{ total = 0 } = { total: 0 }] = await db
+        .select({ total: count() })
+        .from(prompts)
+        .where(where)
+
+      const totalPages = Math.max(1, Math.ceil(total / GALLERY_PAGE_SIZE))
+      const page = Math.min(data.page, totalPages)
+
+      const promptRows = await db
+        .select()
+        .from(prompts)
+        .where(where)
+        .orderBy(desc(prompts.created_at))
+        .limit(GALLERY_PAGE_SIZE)
+        .offset((page - 1) * GALLERY_PAGE_SIZE)
+
+      return {
+        items: await fetchPromptsWithImages(promptRows),
+        pagination: {
+          page,
+          pageSize: GALLERY_PAGE_SIZE,
+          total,
+          totalPages,
+          hasPrev: page > 1,
+          hasNext: page < totalPages,
+        },
+      }
+    } catch {
+      return {
+        items: [],
+        pagination: {
+          page: 1,
+          pageSize: GALLERY_PAGE_SIZE,
+          total: 0,
+          totalPages: 1,
+          hasPrev: false,
+          hasNext: false,
+        },
+      }
+    }
+  })
 
 export const getPromptByIdFn = createServerFn({ method: 'GET' })
   .middleware([authMiddleware])
@@ -253,6 +335,7 @@ export const getPromptByIdFn = createServerFn({ method: 'GET' })
         images: images.map((image) => ({
           id: image.id,
           url: getImageUrl(image.r2_key),
+          thumbnailUrl: getThumbnailUrl(image.r2_key, image.thumbnail_r2_key),
           sort_order: image.sort_order,
         })),
       }
@@ -305,17 +388,27 @@ export const createPromptFn = createServerFn({ method: 'POST' })
 
       try {
         for (const [index, file] of data.imageFiles.entries()) {
-          const key = buildPromptImageKey(created.id, file.name)
+          const { imageKey, thumbnailKey } = buildPromptImageKeys(created.id, file.name)
           const buffer = await file.arrayBuffer()
 
-          await bucket!.put(key, buffer, {
+          await bucket!.put(imageKey, buffer, {
             httpMetadata: { contentType: file.type },
           })
-          uploadedKeys.push(key)
+          uploadedKeys.push(imageKey)
+
+          const thumbnailFile = data.thumbnailFiles[index]
+          const storedThumbnailKey = thumbnailFile ? thumbnailKey : null
+          if (thumbnailFile) {
+            await bucket!.put(thumbnailKey, await thumbnailFile.arrayBuffer(), {
+              httpMetadata: { contentType: thumbnailFile.type },
+            })
+            uploadedKeys.push(thumbnailKey)
+          }
 
           await db.insert(prompt_images).values({
             prompt_id: created.id,
-            r2_key: key,
+            r2_key: imageKey,
+            thumbnail_r2_key: storedThumbnailKey,
             sort_order: index,
             created_at: now,
           })
@@ -392,6 +485,10 @@ export const updatePromptFn = createServerFn({ method: 'POST' })
       for (const image of imagesToRemove) {
         if (bucket) {
           await bucket.delete(image.r2_key)
+          const thumbnailKey = image.thumbnail_r2_key ?? getThumbnailKey(image.r2_key)
+          if (thumbnailKey) {
+            await bucket.delete(thumbnailKey)
+          }
         }
         await db.delete(prompt_images).where(eq(prompt_images.id, image.id))
       }
@@ -402,17 +499,27 @@ export const updatePromptFn = createServerFn({ method: 'POST' })
 
       try {
         for (const [index, file] of data.imageFiles.entries()) {
-          const key = buildPromptImageKey(data.id, file.name)
+          const { imageKey, thumbnailKey } = buildPromptImageKeys(data.id, file.name)
           const buffer = await file.arrayBuffer()
 
-          await bucket!.put(key, buffer, {
+          await bucket!.put(imageKey, buffer, {
             httpMetadata: { contentType: file.type },
           })
-          uploadedKeys.push(key)
+          uploadedKeys.push(imageKey)
+
+          const thumbnailFile = data.thumbnailFiles[index]
+          const storedThumbnailKey = thumbnailFile ? thumbnailKey : null
+          if (thumbnailFile) {
+            await bucket!.put(thumbnailKey, await thumbnailFile.arrayBuffer(), {
+              httpMetadata: { contentType: thumbnailFile.type },
+            })
+            uploadedKeys.push(thumbnailKey)
+          }
 
           await db.insert(prompt_images).values({
             prompt_id: data.id,
-            r2_key: key,
+            r2_key: imageKey,
+            thumbnail_r2_key: storedThumbnailKey,
             sort_order: maxSortOrder + 1 + index,
             created_at: now,
           })

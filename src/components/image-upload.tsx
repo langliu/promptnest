@@ -2,12 +2,19 @@ import { ImagePlus, Loader2, X } from 'lucide-react'
 import { useRef, useState } from 'react'
 
 import { Button } from '@/components/ui/button'
-import { ALLOWED_IMAGE_TYPES, MAX_PROMPT_IMAGES, validateImageFile } from '@/lib/images'
+import {
+  ALLOWED_IMAGE_TYPES,
+  MAX_PROMPT_IMAGES,
+  THUMBNAIL_MAX_SIZE,
+  THUMBNAIL_QUALITY,
+  validateImageFile,
+} from '@/lib/images'
 import { cn } from '@/lib/utils'
 
 export type PendingImage = {
   id: string
   file: File
+  thumbnailFile?: File
   previewUrl: string
 }
 
@@ -16,7 +23,36 @@ type ImageUploadProps = {
   onChange: (images: PendingImage[]) => void
   disabled?: boolean
   error?: string | null
+  maxImages?: number
   onError?: (message: string | null) => void
+}
+
+async function createThumbnailFile(file: File): Promise<File | undefined> {
+  const image = await createImageBitmap(file)
+  const ratio = Math.min(1, THUMBNAIL_MAX_SIZE / Math.max(image.width, image.height))
+  const width = Math.max(1, Math.round(image.width * ratio))
+  const height = Math.max(1, Math.round(image.height * ratio))
+  const canvas = document.createElement('canvas')
+  canvas.width = width
+  canvas.height = height
+
+  const context = canvas.getContext('2d')
+  if (!context) {
+    image.close()
+    return undefined
+  }
+
+  context.drawImage(image, 0, 0, width, height)
+  image.close()
+
+  const blob = await new Promise<Blob | null>((resolve) => {
+    canvas.toBlob(resolve, 'image/webp', THUMBNAIL_QUALITY)
+  })
+
+  if (!blob) return undefined
+
+  const baseName = file.name.replace(/\.[^.]+$/, '') || 'thumbnail'
+  return new File([blob], `${baseName}.webp`, { type: 'image/webp' })
 }
 
 export function ImageUpload({
@@ -24,18 +60,19 @@ export function ImageUpload({
   onChange,
   disabled = false,
   error,
+  maxImages = MAX_PROMPT_IMAGES,
   onError,
 }: ImageUploadProps) {
   const inputRef = useRef<HTMLInputElement>(null)
   const [isDragging, setIsDragging] = useState(false)
 
-  const addFiles = (files: FileList | File[]) => {
+  const addFiles = async (files: FileList | File[]) => {
     const fileArray = Array.from(files)
     if (fileArray.length === 0) return
 
-    const remaining = MAX_PROMPT_IMAGES - images.length
+    const remaining = maxImages - images.length
     if (remaining <= 0) {
-      onError?.(`最多上传 ${MAX_PROMPT_IMAGES} 张图片`)
+      onError?.(`最多上传 ${maxImages} 张图片`)
       return
     }
 
@@ -49,9 +86,12 @@ export function ImageUpload({
         continue
       }
 
+      const thumbnailFile = await createThumbnailFile(file).catch(() => undefined)
+
       nextImages.push({
         id: crypto.randomUUID(),
         file,
+        thumbnailFile,
         previewUrl: URL.createObjectURL(file),
       })
     }
@@ -106,7 +146,7 @@ export function ImageUpload({
         <ImagePlus className='text-muted-foreground mb-3 size-8' />
         <p className='text-sm font-medium'>点击或拖拽上传图片</p>
         <p className='text-muted-foreground mt-1 text-xs'>
-          支持 JPG / PNG / WebP / GIF，单张最大 5MB，最多 {MAX_PROMPT_IMAGES} 张
+          支持 JPG / PNG / WebP / GIF，单张最大 5MB，最多 {maxImages} 张
         </p>
         <input
           id='image-upload-input'
@@ -116,8 +156,8 @@ export function ImageUpload({
           multiple
           className='hidden'
           disabled={disabled}
-          onChange={(e) => {
-            if (e.target.files) addFiles(e.target.files)
+          onChange={async (e) => {
+            if (e.target.files) await addFiles(e.target.files)
             e.target.value = ''
           }}
         />

@@ -17,6 +17,7 @@ export const prompt_images = sqliteTable('prompt_images', {
   id: integer('id').primaryKey({ autoIncrement: true }),
   prompt_id: integer('prompt_id').notNull(),
   r2_key: text('r2_key').notNull(),
+  thumbnail_r2_key: text('thumbnail_r2_key'),
   sort_order: integer('sort_order').default(0),
   created_at: integer('created_at', { mode: 'timestamp' }).notNull(),
 })

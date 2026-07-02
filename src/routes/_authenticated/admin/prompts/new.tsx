@@ -50,6 +50,7 @@ function AdminNewPromptPage() {
             payload.append('tags', formData.tags)
             for (const image of images) {
               payload.append('images', image.file)
+              payload.append('thumbnails', image.thumbnailFile ?? new File([], 'missing-thumbnail'))
             }
 
             await createPrompt({ data: payload })

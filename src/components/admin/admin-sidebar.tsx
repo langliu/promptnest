@@ -1,5 +1,5 @@
 import { Link, useRouterState } from '@tanstack/react-router'
-import { ArrowLeft, FileText, LayoutDashboard } from 'lucide-react'
+import { ExternalLink, FileText, LayoutDashboard } from 'lucide-react'
 
 import { AppLogoMark } from '@/components/app-logo'
 import { cn } from '@/lib/utils'
@@ -61,13 +61,15 @@ export function AdminSidebar() {
       </nav>
 
       <div className='border-border space-y-1 border-t p-3'>
-        <Link
-          to='/'
+        <a
+          href='/gallery'
+          target='_blank'
+          rel='noreferrer'
           className='text-sidebar-foreground/75 hover:bg-sidebar-accent/60 hover:text-sidebar-accent-foreground flex items-center gap-2.5 rounded-lg px-3 py-2 text-sm transition-colors'
         >
-          <ArrowLeft className='size-4' />
-          返回前台
-        </Link>
+          <ExternalLink className='size-4' />
+          打开画廊
+        </a>
       </div>
     </aside>
   )

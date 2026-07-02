@@ -25,6 +25,7 @@ async function initSchema(d1: D1Database) {
 
   if (table) {
     await ensureDraftColumn(d1)
+    await ensureThumbnailColumn(d1)
     return
   }
 
@@ -33,6 +34,7 @@ async function initSchema(d1: D1Database) {
       id integer PRIMARY KEY AUTOINCREMENT NOT NULL,
       prompt_id integer NOT NULL,
       r2_key text NOT NULL,
+      thumbnail_r2_key text,
       sort_order integer DEFAULT 0,
       created_at integer NOT NULL
     )`),
@@ -58,6 +60,15 @@ async function ensureDraftColumn(d1: D1Database) {
   if (hasDraft) return
 
   await d1.prepare('ALTER TABLE prompts ADD COLUMN draft integer NOT NULL DEFAULT 0').run()
+}
+
+async function ensureThumbnailColumn(d1: D1Database) {
+  const columns = await d1.prepare('PRAGMA table_info(prompt_images)').all<{ name: string }>()
+
+  const hasThumbnailKey = columns.results?.some((column) => column.name === 'thumbnail_r2_key')
+  if (hasThumbnailKey) return
+
+  await d1.prepare('ALTER TABLE prompt_images ADD COLUMN thumbnail_r2_key text').run()
 }
 
 export function formatDbError(error: unknown): string {

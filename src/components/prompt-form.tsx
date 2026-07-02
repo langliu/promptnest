@@ -14,6 +14,7 @@ import {
   SelectValue,
 } from '@/components/ui/select'
 import { Textarea } from '@/components/ui/textarea'
+import { MAX_PROMPT_IMAGES } from '@/lib/images'
 import { DEFAULT_MODEL_ID, MODEL_SELECT_ITEMS } from '@/lib/models'
 import { cn } from '@/lib/utils'
 
@@ -70,6 +71,10 @@ export function PromptForm({
   const [isSubmitting, setIsSubmitting] = useState(false)
 
   const visibleExistingImages = existingImages.filter((image) => !removeImageIds.includes(image.id))
+  const maxNewImages =
+    mode === 'edit'
+      ? Math.max(0, MAX_PROMPT_IMAGES - visibleExistingImages.length)
+      : MAX_PROMPT_IMAGES
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
@@ -172,6 +177,7 @@ export function PromptForm({
           onChange={setImages}
           disabled={isSubmitting}
           error={imageError}
+          maxImages={maxNewImages}
           onError={setImageError}
         />
       </div>
