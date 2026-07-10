@@ -6,6 +6,7 @@ import { z } from 'zod'
 import { AdminPageShell } from '@/components/admin/admin-page-shell'
 import { PromptForm } from '@/components/prompt-form'
 import { Button } from '@/components/ui/button'
+import { buildCategorySelectOptions, listCategoriesAdminFn } from '@/lib/categories.functions'
 import { getPromptByIdFn, updatePromptFn } from '@/lib/prompts.functions'
 
 export const Route = createFileRoute('/_authenticated/admin/prompts/$id/edit')({
@@ -16,15 +17,21 @@ export const Route = createFileRoute('/_authenticated/admin/prompts/$id/edit')({
     stringify: ({ id }) => ({ id: String(id) }),
   },
   loader: async ({ params }) => {
-    const prompt = await getPromptByIdFn({ data: params.id })
+    const [prompt, categories] = await Promise.all([
+      getPromptByIdFn({ data: params.id }),
+      listCategoriesAdminFn({ data: {} }),
+    ])
     if (!prompt) throw notFound()
-    return { prompt }
+    return {
+      prompt,
+      categoryOptions: buildCategorySelectOptions(categories),
+    }
   },
   component: AdminEditPromptPage,
 })
 
 function AdminEditPromptPage() {
-  const { prompt } = Route.useLoaderData()
+  const { prompt, categoryOptions } = Route.useLoaderData()
   const navigate = useNavigate()
   const router = useRouter()
   const updatePrompt = useServerFn(updatePromptFn)
@@ -55,11 +62,13 @@ function AdminEditPromptPage() {
       <div className='mx-auto w-full max-w-3xl'>
         <PromptForm
           mode='edit'
+          categoryOptions={categoryOptions}
           initialValues={{
             title: prompt.title,
             prompt: prompt.prompt,
             negative_prompt: prompt.negative_prompt ?? '',
             model: prompt.model,
+            category_id: prompt.category_id ? String(prompt.category_id) : 'none',
             tags: prompt.tags ?? '',
           }}
           existingImages={prompt.images}
@@ -71,6 +80,7 @@ function AdminEditPromptPage() {
             payload.append('prompt', formData.prompt)
             payload.append('negative_prompt', formData.negative_prompt)
             payload.append('model', formData.model)
+            payload.append('category_id', formData.category_id)
             payload.append('tags', formData.tags)
             if (removeImageIds.length > 0) {
               payload.append('removeImageIds', removeImageIds.join(','))

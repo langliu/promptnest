@@ -3,8 +3,15 @@ import { ChevronLeft, ChevronRight, ImageIcon, Search } from 'lucide-react'
 import { useEffect, useState } from 'react'
 import { z } from 'zod'
 
+import {
+  FILTER_ACTIONS_CLASS,
+  FILTER_FIELD_CLASS,
+  FILTER_FORM_GRID_CLASS,
+  FILTER_LABEL_CLASS,
+} from '@/components/filter-form-layout'
 import { GalleryCardTags } from '@/components/gallery-card-tags'
 import { PromptPreviewDialog, type GalleryPrompt } from '@/components/prompt-preview-dialog'
+import { PromptStarButton } from '@/components/prompt-star-button'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent } from '@/components/ui/card'
@@ -17,50 +24,82 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select'
+import {
+  buildCategoryFilterOptions,
+  listCategoriesFn,
+  NO_CATEGORY_VALUE,
+} from '@/lib/categories.functions'
 import { MODEL_FILTER_SELECT_ITEMS } from '@/lib/models'
 import { listGalleryPromptsFn } from '@/lib/prompts.functions'
 
 const searchSchema = z.object({
   keyword: z.string().optional(),
   model: z.string().optional(),
+  category: z.union([z.literal(NO_CATEGORY_VALUE), z.coerce.number().int().positive()]).optional(),
+  starred: z.enum(['starred']).optional(),
+  sort: z.enum(['newest', 'popular', 'starred']).optional().catch(undefined),
   page: z.coerce.number().int().min(1).optional().catch(undefined),
 })
+
+const GALLERY_SORT_ITEMS = [
+  { value: 'newest', label: '最新发布' },
+  { value: 'popular', label: '最多复制' },
+  { value: 'starred', label: '星标优先' },
+] as const
 
 export const Route = createFileRoute('/gallery')({
   validateSearch: searchSchema,
   loaderDeps: ({ search }) => ({
     keyword: search.keyword,
     model: search.model,
+    category: search.category,
+    starred: search.starred,
+    sort: search.sort,
     page: search.page,
   }),
   loader: async ({ deps }) => {
-    const result = await listGalleryPromptsFn({
-      data: {
-        keyword: deps.keyword,
-        model: deps.model,
-        page: deps.page,
-      },
-    })
+    const [result, categories] = await Promise.all([
+      listGalleryPromptsFn({
+        data: {
+          keyword: deps.keyword,
+          model: deps.model,
+          category: deps.category,
+          starred: deps.starred,
+          sort: deps.sort,
+          page: deps.page,
+        },
+      }),
+      listCategoriesFn(),
+    ])
     return {
       prompts: result.items,
       pagination: result.pagination,
+      categoryFilterOptions: buildCategoryFilterOptions(categories),
     }
   },
   component: GalleryPage,
 })
 
 function GalleryPage() {
-  const { prompts, pagination } = Route.useLoaderData()
+  const { prompts, pagination, categoryFilterOptions } = Route.useLoaderData()
   const search = Route.useSearch()
   const navigate = Route.useNavigate()
   const [previewPrompt, setPreviewPrompt] = useState<GalleryPrompt | null>(null)
   const [keyword, setKeyword] = useState(search.keyword ?? '')
   const [model, setModel] = useState(search.model ?? 'all')
+  const [category, setCategory] = useState(
+    search.category != null ? String(search.category) : 'all',
+  )
+  const [starred, setStarred] = useState(search.starred ?? 'all')
+  const [sort, setSort] = useState(search.sort ?? 'newest')
 
   useEffect(() => {
     setKeyword(search.keyword ?? '')
     setModel(search.model ?? 'all')
-  }, [search.keyword, search.model])
+    setCategory(search.category != null ? String(search.category) : 'all')
+    setStarred(search.starred ?? 'all')
+    setSort(search.sort ?? 'newest')
+  }, [search.keyword, search.model, search.category, search.starred, search.sort])
 
   const handleSearch = (event: React.FormEvent<HTMLFormElement>) => {
     event.preventDefault()
@@ -68,6 +107,14 @@ function GalleryPage() {
       search: {
         keyword: keyword.trim() || undefined,
         model: model === 'all' ? undefined : model,
+        category:
+          category === 'all'
+            ? undefined
+            : category === NO_CATEGORY_VALUE
+              ? NO_CATEGORY_VALUE
+              : Number(category),
+        starred: starred === 'starred' ? 'starred' : undefined,
+        sort: sort === 'newest' ? undefined : (sort as 'popular' | 'starred'),
         page: undefined,
       },
     })
@@ -76,7 +123,19 @@ function GalleryPage() {
   const handleReset = () => {
     setKeyword('')
     setModel('all')
-    navigate({ search: { keyword: undefined, model: undefined, page: undefined } })
+    setCategory('all')
+    setStarred('all')
+    setSort('newest')
+    navigate({
+      search: {
+        keyword: undefined,
+        model: undefined,
+        category: undefined,
+        starred: undefined,
+        sort: undefined,
+        page: undefined,
+      },
+    })
   }
 
   const goToPage = (page: number) => {
@@ -100,51 +159,109 @@ function GalleryPage() {
         </div>
 
         <form onSubmit={handleSearch} className='border-border bg-card mb-6 rounded-xl border p-4'>
-          <div className='flex flex-col gap-4 lg:flex-row lg:items-center'>
-            <div className='flex flex-1 flex-col gap-4 sm:flex-row sm:items-center'>
-              <div className='flex min-w-0 flex-1 items-center gap-3'>
-                <Label
-                  htmlFor='gallery-keyword'
-                  className='text-muted-foreground w-14 shrink-0 text-right'
-                >
-                  关键词
-                </Label>
-                <Input
-                  id='gallery-keyword'
-                  value={keyword}
-                  onChange={(event) => setKeyword(event.target.value)}
-                  placeholder='搜索标题、标签或 Prompt 内容'
-                  className='min-w-0 flex-1'
-                />
-              </div>
-
-              <div className='flex w-full items-center gap-3 sm:w-auto'>
-                <Label
-                  htmlFor='gallery-model'
-                  className='text-muted-foreground w-14 shrink-0 text-right'
-                >
-                  模型
-                </Label>
-                <Select
-                  value={model}
-                  items={MODEL_FILTER_SELECT_ITEMS}
-                  onValueChange={(value) => setModel(value ?? 'all')}
-                >
-                  <SelectTrigger id='gallery-model' className='w-full sm:w-44'>
-                    <SelectValue placeholder='全部模型' />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {MODEL_FILTER_SELECT_ITEMS.map((item) => (
-                      <SelectItem key={item.value} value={item.value}>
-                        {item.label}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-              </div>
+          <div className={FILTER_FORM_GRID_CLASS}>
+            <div className={FILTER_FIELD_CLASS}>
+              <Label htmlFor='gallery-keyword' className={FILTER_LABEL_CLASS}>
+                关键词
+              </Label>
+              <Input
+                id='gallery-keyword'
+                className='min-w-0 flex-1'
+                value={keyword}
+                onChange={(event) => setKeyword(event.target.value)}
+                placeholder='搜索标题、标签或 Prompt 内容'
+              />
             </div>
 
-            <div className='flex shrink-0 gap-2 lg:ml-2'>
+            <div className={FILTER_FIELD_CLASS}>
+              <Label htmlFor='gallery-model' className={FILTER_LABEL_CLASS}>
+                模型
+              </Label>
+              <Select
+                value={model}
+                items={MODEL_FILTER_SELECT_ITEMS}
+                onValueChange={(value) => setModel(value ?? 'all')}
+              >
+                <SelectTrigger id='gallery-model' className='min-w-0 flex-1'>
+                  <SelectValue placeholder='全部模型' />
+                </SelectTrigger>
+                <SelectContent>
+                  {MODEL_FILTER_SELECT_ITEMS.map((item) => (
+                    <SelectItem key={item.value} value={item.value}>
+                      {item.label}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+
+            <div className={FILTER_FIELD_CLASS}>
+              <Label htmlFor='gallery-category' className={FILTER_LABEL_CLASS}>
+                分类
+              </Label>
+              <Select
+                value={category}
+                items={categoryFilterOptions}
+                onValueChange={(value) => setCategory(value ?? 'all')}
+              >
+                <SelectTrigger id='gallery-category' className='min-w-0 flex-1'>
+                  <SelectValue placeholder='全部分类' />
+                </SelectTrigger>
+                <SelectContent>
+                  {categoryFilterOptions.map((item) => (
+                    <SelectItem key={item.value} value={item.value}>
+                      {item.label}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+
+            <div className={FILTER_FIELD_CLASS}>
+              <Label htmlFor='gallery-starred' className={FILTER_LABEL_CLASS}>
+                星标
+              </Label>
+              <Select
+                value={starred}
+                items={[
+                  { value: 'all', label: '全部' },
+                  { value: 'starred', label: '只看星标' },
+                ]}
+                onValueChange={(value) => setStarred(value ?? 'all')}
+              >
+                <SelectTrigger id='gallery-starred' className='min-w-0 flex-1'>
+                  <SelectValue placeholder='全部' />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value='all'>全部</SelectItem>
+                  <SelectItem value='starred'>只看星标</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+
+            <div className={FILTER_FIELD_CLASS}>
+              <Label htmlFor='gallery-sort' className={FILTER_LABEL_CLASS}>
+                排序
+              </Label>
+              <Select
+                value={sort}
+                items={GALLERY_SORT_ITEMS}
+                onValueChange={(value) => setSort(value ?? 'newest')}
+              >
+                <SelectTrigger id='gallery-sort' className='min-w-0 flex-1'>
+                  <SelectValue placeholder='最新发布' />
+                </SelectTrigger>
+                <SelectContent>
+                  {GALLERY_SORT_ITEMS.map((item) => (
+                    <SelectItem key={item.value} value={item.value}>
+                      {item.label}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+
+            <div className={FILTER_ACTIONS_CLASS}>
               <Button type='submit' className='min-w-24'>
                 <Search data-icon='inline-start' />
                 查询
@@ -183,6 +300,10 @@ function GalleryPage() {
                   }}
                 >
                   <div className='group bg-muted relative block w-full'>
+                    <div className='absolute top-2 left-2 z-10'>
+                      <PromptStarButton promptId={prompt.id} starred={prompt.starred} />
+                    </div>
+
                     {cover ? (
                       <img
                         src={cover.thumbnailUrl ?? cover.url}
@@ -205,11 +326,18 @@ function GalleryPage() {
                       </Badge>
                     )}
 
-                    <div className='pointer-events-none absolute inset-x-0 bottom-0 space-y-2 bg-linear-to-t from-black/80 via-black/45 to-transparent px-3 pt-16 pb-3'>
+                    <div className='absolute inset-x-0 bottom-0 space-y-2 bg-linear-to-t from-black/80 via-black/45 to-transparent px-3 pt-16 pb-3'>
                       <h2 className='line-clamp-2 text-left text-base leading-snug font-semibold text-white drop-shadow-sm'>
                         {prompt.title}
                       </h2>
-                      <GalleryCardTags overlay model={prompt.model} tags={prompt.tags} />
+                      <div className='flex flex-wrap items-center gap-1'>
+                        <GalleryCardTags
+                          overlay
+                          model={prompt.model}
+                          categoryName={prompt.categoryName}
+                          tags={prompt.tags}
+                        />
+                      </div>
                     </div>
                   </div>
                 </Card>

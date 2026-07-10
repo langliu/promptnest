@@ -5,13 +5,19 @@ import { ArrowLeft } from 'lucide-react'
 import { AdminPageShell } from '@/components/admin/admin-page-shell'
 import { PromptForm } from '@/components/prompt-form'
 import { Button } from '@/components/ui/button'
+import { buildCategorySelectOptions, listCategoriesAdminFn } from '@/lib/categories.functions'
 import { createPromptFn } from '@/lib/prompts.functions'
 
 export const Route = createFileRoute('/_authenticated/admin/prompts/new')({
+  loader: async () => {
+    const categories = await listCategoriesAdminFn({ data: {} })
+    return { categoryOptions: buildCategorySelectOptions(categories) }
+  },
   component: AdminNewPromptPage,
 })
 
 function AdminNewPromptPage() {
+  const { categoryOptions } = Route.useLoaderData()
   const navigate = useNavigate()
   const router = useRouter()
   const createPrompt = useServerFn(createPromptFn)
@@ -40,6 +46,7 @@ function AdminNewPromptPage() {
       <div className='mx-auto w-full max-w-3xl'>
         <PromptForm
           mode='create'
+          categoryOptions={categoryOptions}
           onCancel={() => navigate({ to: '/admin/prompts' })}
           onSubmit={async ({ formData, images }) => {
             const payload = new FormData()
@@ -47,6 +54,7 @@ function AdminNewPromptPage() {
             payload.append('prompt', formData.prompt)
             payload.append('negative_prompt', formData.negative_prompt)
             payload.append('model', formData.model)
+            payload.append('category_id', formData.category_id)
             payload.append('tags', formData.tags)
             for (const image of images) {
               payload.append('images', image.file)

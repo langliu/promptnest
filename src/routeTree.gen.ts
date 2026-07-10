@@ -18,6 +18,7 @@ import { Route as ApiImagesRouteImport } from './routes/api/images'
 import { Route as AuthenticatedAdminRouteImport } from './routes/_authenticated/admin'
 import { Route as AuthenticatedAdminIndexRouteImport } from './routes/_authenticated/admin/index'
 import { Route as AuthenticatedAdminPromptsIndexRouteImport } from './routes/_authenticated/admin/prompts/index'
+import { Route as AuthenticatedAdminCategoriesIndexRouteImport } from './routes/_authenticated/admin/categories/index'
 import { Route as AuthenticatedAdminPromptsNewRouteImport } from './routes/_authenticated/admin/prompts/new'
 import { Route as AuthenticatedAdminPromptsIdEditRouteImport } from './routes/_authenticated/admin/prompts/$id/edit'
 
@@ -66,6 +67,12 @@ const AuthenticatedAdminPromptsIndexRoute =
     path: '/prompts/',
     getParentRoute: () => AuthenticatedAdminRoute,
   } as any)
+const AuthenticatedAdminCategoriesIndexRoute =
+  AuthenticatedAdminCategoriesIndexRouteImport.update({
+    id: '/categories/',
+    path: '/categories/',
+    getParentRoute: () => AuthenticatedAdminRoute,
+  } as any)
 const AuthenticatedAdminPromptsNewRoute =
   AuthenticatedAdminPromptsNewRouteImport.update({
     id: '/prompts/new',
@@ -88,6 +95,7 @@ export interface FileRoutesByFullPath {
   '/gallery/$id': typeof GalleryIdRoute
   '/admin/': typeof AuthenticatedAdminIndexRoute
   '/admin/prompts/new': typeof AuthenticatedAdminPromptsNewRoute
+  '/admin/categories/': typeof AuthenticatedAdminCategoriesIndexRoute
   '/admin/prompts/': typeof AuthenticatedAdminPromptsIndexRoute
   '/admin/prompts/$id/edit': typeof AuthenticatedAdminPromptsIdEditRoute
 }
@@ -99,6 +107,7 @@ export interface FileRoutesByTo {
   '/gallery/$id': typeof GalleryIdRoute
   '/admin': typeof AuthenticatedAdminIndexRoute
   '/admin/prompts/new': typeof AuthenticatedAdminPromptsNewRoute
+  '/admin/categories': typeof AuthenticatedAdminCategoriesIndexRoute
   '/admin/prompts': typeof AuthenticatedAdminPromptsIndexRoute
   '/admin/prompts/$id/edit': typeof AuthenticatedAdminPromptsIdEditRoute
 }
@@ -113,6 +122,7 @@ export interface FileRoutesById {
   '/gallery_/$id': typeof GalleryIdRoute
   '/_authenticated/admin/': typeof AuthenticatedAdminIndexRoute
   '/_authenticated/admin/prompts/new': typeof AuthenticatedAdminPromptsNewRoute
+  '/_authenticated/admin/categories/': typeof AuthenticatedAdminCategoriesIndexRoute
   '/_authenticated/admin/prompts/': typeof AuthenticatedAdminPromptsIndexRoute
   '/_authenticated/admin/prompts/$id/edit': typeof AuthenticatedAdminPromptsIdEditRoute
 }
@@ -127,6 +137,7 @@ export interface FileRouteTypes {
     | '/gallery/$id'
     | '/admin/'
     | '/admin/prompts/new'
+    | '/admin/categories/'
     | '/admin/prompts/'
     | '/admin/prompts/$id/edit'
   fileRoutesByTo: FileRoutesByTo
@@ -138,6 +149,7 @@ export interface FileRouteTypes {
     | '/gallery/$id'
     | '/admin'
     | '/admin/prompts/new'
+    | '/admin/categories'
     | '/admin/prompts'
     | '/admin/prompts/$id/edit'
   id:
@@ -151,6 +163,7 @@ export interface FileRouteTypes {
     | '/gallery_/$id'
     | '/_authenticated/admin/'
     | '/_authenticated/admin/prompts/new'
+    | '/_authenticated/admin/categories/'
     | '/_authenticated/admin/prompts/'
     | '/_authenticated/admin/prompts/$id/edit'
   fileRoutesById: FileRoutesById
@@ -229,6 +242,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AuthenticatedAdminPromptsIndexRouteImport
       parentRoute: typeof AuthenticatedAdminRoute
     }
+    '/_authenticated/admin/categories/': {
+      id: '/_authenticated/admin/categories/'
+      path: '/categories'
+      fullPath: '/admin/categories/'
+      preLoaderRoute: typeof AuthenticatedAdminCategoriesIndexRouteImport
+      parentRoute: typeof AuthenticatedAdminRoute
+    }
     '/_authenticated/admin/prompts/new': {
       id: '/_authenticated/admin/prompts/new'
       path: '/prompts/new'
@@ -249,6 +269,7 @@ declare module '@tanstack/react-router' {
 interface AuthenticatedAdminRouteChildren {
   AuthenticatedAdminIndexRoute: typeof AuthenticatedAdminIndexRoute
   AuthenticatedAdminPromptsNewRoute: typeof AuthenticatedAdminPromptsNewRoute
+  AuthenticatedAdminCategoriesIndexRoute: typeof AuthenticatedAdminCategoriesIndexRoute
   AuthenticatedAdminPromptsIndexRoute: typeof AuthenticatedAdminPromptsIndexRoute
   AuthenticatedAdminPromptsIdEditRoute: typeof AuthenticatedAdminPromptsIdEditRoute
 }
@@ -256,6 +277,8 @@ interface AuthenticatedAdminRouteChildren {
 const AuthenticatedAdminRouteChildren: AuthenticatedAdminRouteChildren = {
   AuthenticatedAdminIndexRoute: AuthenticatedAdminIndexRoute,
   AuthenticatedAdminPromptsNewRoute: AuthenticatedAdminPromptsNewRoute,
+  AuthenticatedAdminCategoriesIndexRoute:
+    AuthenticatedAdminCategoriesIndexRoute,
   AuthenticatedAdminPromptsIndexRoute: AuthenticatedAdminPromptsIndexRoute,
   AuthenticatedAdminPromptsIdEditRoute: AuthenticatedAdminPromptsIdEditRoute,
 }

@@ -1,5 +1,5 @@
 import { Link, useRouterState } from '@tanstack/react-router'
-import { ExternalLink, FileText, LayoutDashboard } from 'lucide-react'
+import { ExternalLink, FileText, FolderTree, LayoutDashboard } from 'lucide-react'
 
 import { AppLogoMark } from '@/components/app-logo'
 import { cn } from '@/lib/utils'
@@ -16,6 +16,12 @@ const menuItems = [
     label: 'Prompt 管理',
     icon: FileText,
     match: (pathname: string) => pathname.startsWith('/admin/prompts'),
+  },
+  {
+    to: '/admin/categories',
+    label: '分类管理',
+    icon: FolderTree,
+    match: (pathname: string) => pathname.startsWith('/admin/categories'),
   },
 ] as const
 

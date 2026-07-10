@@ -16,6 +16,7 @@ import {
 import { Textarea } from '@/components/ui/textarea'
 import { MAX_PROMPT_IMAGES } from '@/lib/images'
 import { DEFAULT_MODEL_ID, MODEL_SELECT_ITEMS } from '@/lib/models'
+import { formatPromptTags } from '@/lib/prompt-tags'
 import { cn } from '@/lib/utils'
 
 export type ExistingPromptImage = {
@@ -24,16 +25,23 @@ export type ExistingPromptImage = {
   sort_order?: number | null
 }
 
+export type PromptCategoryOption = {
+  value: string
+  label: string
+}
+
 export type PromptFormValues = {
   title: string
   prompt: string
   negative_prompt: string
   model: string
+  category_id: string
   tags: string
 }
 
 type PromptFormProps = {
   mode: 'create' | 'edit'
+  categoryOptions: PromptCategoryOption[]
   initialValues?: Partial<PromptFormValues>
   existingImages?: ExistingPromptImage[]
   submitLabel?: string
@@ -51,11 +59,13 @@ const defaultValues: PromptFormValues = {
   prompt: '',
   negative_prompt: '',
   model: DEFAULT_MODEL_ID,
+  category_id: 'none',
   tags: '',
 }
 
 export function PromptForm({
   mode,
+  categoryOptions,
   initialValues,
   existingImages = [],
   submitLabel,
@@ -256,15 +266,45 @@ export function PromptForm({
         </div>
 
         <div className='space-y-2'>
-          <Label htmlFor='tags'>标签（逗号分隔）</Label>
-          <Input
-            id='tags'
-            value={formData.tags}
-            onChange={(e) => setFormData({ ...formData, tags: e.target.value })}
-            placeholder='写实, 赛博朋克, 肖像'
+          <Label htmlFor='category_id'>分类</Label>
+          <Select
+            value={formData.category_id}
+            items={categoryOptions}
+            onValueChange={(value) =>
+              setFormData({
+                ...formData,
+                category_id: value ?? 'none',
+              })
+            }
             disabled={isSubmitting}
-          />
+          >
+            <SelectTrigger id='category_id' className='w-full'>
+              <SelectValue placeholder='选择分类' />
+            </SelectTrigger>
+            <SelectContent>
+              {categoryOptions.map((category) => (
+                <SelectItem key={category.value} value={category.value}>
+                  {category.label}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
         </div>
+      </div>
+
+      <div className='space-y-2'>
+        <Label htmlFor='tags'>标签（逗号分隔）</Label>
+        <Input
+          id='tags'
+          value={formData.tags}
+          onChange={(e) => setFormData({ ...formData, tags: e.target.value })}
+          onBlur={() => setFormData({ ...formData, tags: formatPromptTags(formData.tags) ?? '' })}
+          placeholder='写实, 赛博朋克, 肖像'
+          disabled={isSubmitting}
+        />
+        <p className='text-muted-foreground text-xs'>
+          支持逗号、顿号、分号或换行分隔，保存时会自动去重。
+        </p>
       </div>
 
       <div className='flex flex-wrap gap-3 pt-2'>

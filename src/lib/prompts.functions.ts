@@ -1,8 +1,9 @@
 import { createServerFn } from '@tanstack/react-start'
-import { and, count, desc, eq, inArray, like, or } from 'drizzle-orm'
+import { and, count, desc, eq, inArray, isNull, like, or, sql } from 'drizzle-orm'
 import { z } from 'zod'
 
 import { authMiddleware } from '@/lib/auth.middleware'
+import { NO_CATEGORY_VALUE } from '@/lib/categories.functions'
 import { formatDbError, getDb } from '@/lib/db'
 import {
   buildPromptImageKeys,
@@ -13,8 +14,41 @@ import {
   validateImageFile,
 } from '@/lib/images'
 import { modelIdSchema } from '@/lib/models'
+import { formatPromptTags } from '@/lib/prompt-tags'
+import { logError } from '@/lib/utils'
 
-import { prompt_images, prompts } from '../../drizzle/schema'
+import { categories, prompt_images, prompts } from '../../drizzle/schema'
+
+function parseCategoryId(raw: FormDataEntryValue | null): number | null {
+  const value = raw?.toString().trim()
+  if (!value || value === NO_CATEGORY_VALUE) return null
+
+  const parsed = z.coerce.number().int().positive('无效的分类').safeParse(value)
+  if (!parsed.success) {
+    throw new Error(parsed.error.issues[0]?.message ?? '无效的分类')
+  }
+
+  return parsed.data
+}
+
+async function resolveCategoryId(
+  db: NonNullable<Awaited<ReturnType<typeof getDb>>>,
+  categoryId: number | null,
+) {
+  if (categoryId === null) return null
+
+  const [category] = await db
+    .select({ id: categories.id })
+    .from(categories)
+    .where(eq(categories.id, categoryId))
+    .limit(1)
+
+  if (!category) {
+    throw new Error('所选分类不存在')
+  }
+
+  return categoryId
+}
 
 const ADMIN_PROMPTS_PAGE_SIZE = 20
 const GALLERY_PAGE_SIZE = 24
@@ -30,6 +64,8 @@ function parseCreatePromptFormData(data: FormData) {
   const negative_prompt = data.get('negative_prompt')?.toString().trim() ?? ''
   const model = data.get('model')?.toString() ?? ''
   const tags = data.get('tags')?.toString().trim() ?? ''
+  const normalizedTags = formatPromptTags(tags)
+  const category_id = parseCategoryId(data.get('category_id'))
 
   const parsed = z
     .object({
@@ -38,13 +74,15 @@ function parseCreatePromptFormData(data: FormData) {
       negative_prompt: z.string().optional(),
       model: modelIdSchema,
       tags: z.string().optional(),
+      category_id: z.number().int().positive().nullable(),
     })
     .parse({
       title,
       prompt,
       negative_prompt: negative_prompt || undefined,
       model,
-      tags: tags || undefined,
+      tags: normalizedTags || undefined,
+      category_id,
     })
 
   const imageFiles = data.getAll('images').filter((entry): entry is File => entry instanceof File)
@@ -76,8 +114,10 @@ function parseUpdatePromptFormData(data: FormData) {
   const negative_prompt = data.get('negative_prompt')?.toString().trim() ?? ''
   const model = data.get('model')?.toString() ?? ''
   const tags = data.get('tags')?.toString().trim() ?? ''
+  const normalizedTags = formatPromptTags(tags)
   const removeImageIdsRaw = data.get('removeImageIds')?.toString().trim() ?? ''
   const imageOrderRaw = data.get('imageOrder')?.toString().trim() ?? ''
+  const category_id = parseCategoryId(data.get('category_id'))
 
   const parsed = z
     .object({
@@ -87,6 +127,7 @@ function parseUpdatePromptFormData(data: FormData) {
       negative_prompt: z.string().optional(),
       model: modelIdSchema,
       tags: z.string().optional(),
+      category_id: z.number().int().positive().nullable(),
       removeImageIds: z.array(z.number().int().positive()),
       imageOrder: z.array(z.number().int().positive()),
     })
@@ -96,7 +137,8 @@ function parseUpdatePromptFormData(data: FormData) {
       prompt,
       negative_prompt: negative_prompt || undefined,
       model,
-      tags: tags || undefined,
+      tags: normalizedTags || undefined,
+      category_id,
       removeImageIds: removeImageIdsRaw
         ? removeImageIdsRaw.split(',').map((value) => Number(value.trim()))
         : [],
@@ -130,11 +172,15 @@ function parseUpdatePromptFormData(data: FormData) {
 const promptSearchSchema = z.object({
   keyword: z.string().optional(),
   model: z.string().optional(),
+  category: z.union([z.literal(NO_CATEGORY_VALUE), z.coerce.number().int().positive()]).optional(),
   status: z.enum(['published', 'draft']).optional(),
+  starred: z.enum(['starred']).optional(),
   page: z.coerce.number().int().min(1).catch(1),
 })
 
-const gallerySearchSchema = promptSearchSchema.omit({ status: true })
+const gallerySearchSchema = promptSearchSchema.omit({ status: true }).extend({
+  sort: z.enum(['newest', 'popular', 'starred']).optional().catch(undefined),
+})
 
 async function fetchPromptsWithImages(promptRows: (typeof prompts.$inferSelect)[]) {
   if (promptRows.length === 0) return []
@@ -165,9 +211,26 @@ async function fetchPromptsWithImages(promptRows: (typeof prompts.$inferSelect)[
     imagesByPromptId.set(image.prompt_id, list)
   }
 
+  const categoryIds = [
+    ...new Set(promptRows.map((row) => row.category_id).filter((id): id is number => id != null)),
+  ]
+  const categoryNameById = new Map<number, string>()
+
+  if (categoryIds.length > 0) {
+    const categoryRows = await db
+      .select({ id: categories.id, name: categories.name })
+      .from(categories)
+      .where(inArray(categories.id, categoryIds))
+
+    for (const category of categoryRows) {
+      categoryNameById.set(category.id, category.name)
+    }
+  }
+
   return promptRows.map((row) => ({
     ...row,
     images: imagesByPromptId.get(row.id) ?? [],
+    categoryName: row.category_id ? (categoryNameById.get(row.category_id) ?? null) : null,
   }))
 }
 
@@ -209,6 +272,14 @@ export const listPromptsAdminFn = createServerFn({ method: 'GET' })
       if (data.status) {
         filters.push(eq(prompts.draft, data.status === 'draft'))
       }
+      if (data.starred) {
+        filters.push(eq(prompts.starred, true))
+      }
+      if (data.category === NO_CATEGORY_VALUE) {
+        filters.push(isNull(prompts.category_id))
+      } else if (data.category) {
+        filters.push(eq(prompts.category_id, data.category))
+      }
       const where = filters.length > 0 ? and(...filters) : undefined
       const [{ total = 0 } = { total: 0 }] = await db
         .select({ total: count() })
@@ -238,6 +309,11 @@ export const listPromptsAdminFn = createServerFn({ method: 'GET' })
         },
       }
     } catch (error) {
+      logError('Failed to list admin prompts', error, {
+        keyword: data.keyword,
+        model: data.model,
+        page: data.page,
+      })
       throw new Error(formatDbError(error))
     }
   })
@@ -276,6 +352,21 @@ export const listGalleryPromptsFn = createServerFn({ method: 'GET' })
       if (data.model) {
         filters.push(eq(prompts.model, data.model))
       }
+      if (data.starred) {
+        filters.push(eq(prompts.starred, true))
+      }
+      if (data.category === NO_CATEGORY_VALUE) {
+        filters.push(isNull(prompts.category_id))
+      } else if (data.category) {
+        filters.push(eq(prompts.category_id, data.category))
+      }
+
+      const orderBy =
+        data.sort === 'popular'
+          ? [desc(prompts.copy_count), desc(prompts.created_at)]
+          : data.sort === 'starred'
+            ? [desc(prompts.starred), desc(prompts.created_at)]
+            : [desc(prompts.created_at)]
 
       const where = and(...filters)
       const [{ total = 0 } = { total: 0 }] = await db
@@ -290,7 +381,7 @@ export const listGalleryPromptsFn = createServerFn({ method: 'GET' })
         .select()
         .from(prompts)
         .where(where)
-        .orderBy(desc(prompts.created_at))
+        .orderBy(...orderBy)
         .limit(GALLERY_PAGE_SIZE)
         .offset((page - 1) * GALLERY_PAGE_SIZE)
 
@@ -356,6 +447,89 @@ export const getGalleryPromptByIdFn = createServerFn({ method: 'GET' })
     }
   })
 
+export const recordPromptCopyFn = createServerFn({ method: 'POST' })
+  .validator(z.number().int().positive())
+  .handler(async ({ data: id }) => {
+    try {
+      const db = await getDb()
+      if (!db) return null
+
+      const result = await db
+        .update(prompts)
+        .set({
+          copy_count: sql`${prompts.copy_count} + 1`,
+          last_copied_at: new Date(),
+        })
+        .where(and(eq(prompts.id, id), eq(prompts.draft, false)))
+        .returning({ id: prompts.id, copy_count: prompts.copy_count })
+
+      return result[0] ?? null
+    } catch {
+      return null
+    }
+  })
+
+export const updatePublishedPromptStarredFn = createServerFn({ method: 'POST' })
+  .validator(
+    z.object({
+      id: z.number().int().positive(),
+      starred: z.boolean(),
+    }),
+  )
+  .handler(async ({ data }) => {
+    try {
+      const db = await getDb()
+      if (!db) return null
+
+      const result = await db
+        .update(prompts)
+        .set({
+          starred: data.starred,
+          updated_at: new Date(),
+        })
+        .where(and(eq(prompts.id, data.id), eq(prompts.draft, false)))
+        .returning({ id: prompts.id, starred: prompts.starred })
+
+      return result[0] ?? null
+    } catch {
+      return null
+    }
+  })
+
+export const updatePromptStarredAdminFn = createServerFn({ method: 'POST' })
+  .middleware([authMiddleware])
+  .validator(
+    z.object({
+      id: z.number().int().positive(),
+      starred: z.boolean(),
+    }),
+  )
+  .handler(async ({ data }) => {
+    try {
+      const db = await getDb()
+      if (!db) {
+        throw new Error('数据库不可用，请确认本地 D1 已启动')
+      }
+
+      const result = await db
+        .update(prompts)
+        .set({
+          starred: data.starred,
+          updated_at: new Date(),
+        })
+        .where(eq(prompts.id, data.id))
+        .returning({ id: prompts.id, starred: prompts.starred })
+
+      if (!result[0]) {
+        throw new Error('Prompt 不存在')
+      }
+
+      return result[0]
+    } catch (error) {
+      throw new Error(formatDbError(error))
+    }
+  })
+
 export const getPromptByIdFn = createServerFn({ method: 'GET' })
   .middleware([authMiddleware])
   .validator(z.number().int().positive())
@@ -411,6 +585,7 @@ export const createPromptFn = createServerFn({ method: 'POST' })
 
       const now = new Date()
       const uploadedKeys: string[] = []
+      const category_id = await resolveCategoryId(db, data.category_id)
 
       const result = await db
         .insert(prompts)
@@ -419,7 +594,8 @@ export const createPromptFn = createServerFn({ method: 'POST' })
           prompt: data.prompt.trim(),
           negative_prompt: data.negative_prompt?.trim() || null,
           model: data.model,
-          tags: data.tags?.trim() || null,
+          tags: formatPromptTags(data.tags),
+          category_id,
           draft: true,
           created_at: now,
           updated_at: now,
@@ -512,6 +688,7 @@ export const updatePromptFn = createServerFn({ method: 'POST' })
 
       const now = new Date()
       const uploadedKeys: string[] = []
+      const category_id = await resolveCategoryId(db, data.category_id)
 
       await db
         .update(prompts)
@@ -520,7 +697,8 @@ export const updatePromptFn = createServerFn({ method: 'POST' })
           prompt: data.prompt.trim(),
           negative_prompt: data.negative_prompt?.trim() || null,
           model: data.model,
-          tags: data.tags?.trim() || null,
+          tags: formatPromptTags(data.tags),
+          category_id,
           updated_at: now,
         })
         .where(eq(prompts.id, data.id))

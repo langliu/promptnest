@@ -6,6 +6,13 @@ import { z } from 'zod'
 
 import { AdminPageHeader, AdminPageShell } from '@/components/admin/admin-page-shell'
 import { PromptDraftSwitch } from '@/components/admin/prompt-draft-switch'
+import {
+  FILTER_ACTIONS_CLASS,
+  FILTER_FIELD_CLASS,
+  FILTER_FORM_GRID_CLASS,
+  FILTER_LABEL_CLASS,
+} from '@/components/filter-form-layout'
+import { PromptStarButton } from '@/components/prompt-star-button'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
@@ -17,6 +24,11 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select'
+import {
+  buildCategoryFilterOptions,
+  listCategoriesAdminFn,
+  NO_CATEGORY_VALUE,
+} from '@/lib/categories.functions'
 import { getModelLabel, MODEL_FILTER_SELECT_ITEMS } from '@/lib/models'
 import { parsePromptTags } from '@/lib/prompt-tags'
 import { listPromptsAdminFn } from '@/lib/prompts.functions'
@@ -24,7 +36,9 @@ import { listPromptsAdminFn } from '@/lib/prompts.functions'
 const searchSchema = z.object({
   keyword: z.string().optional(),
   model: z.string().optional(),
+  category: z.union([z.literal(NO_CATEGORY_VALUE), z.coerce.number().int().positive()]).optional(),
   status: z.enum(['published', 'draft']).optional(),
+  starred: z.enum(['starred']).optional(),
   page: z.coerce.number().int().min(1).optional().catch(undefined),
 })
 
@@ -33,39 +47,53 @@ export const Route = createFileRoute('/_authenticated/admin/prompts/')({
   loaderDeps: ({ search }) => ({
     keyword: search.keyword,
     model: search.model,
+    category: search.category,
     status: search.status,
+    starred: search.starred,
     page: search.page,
   }),
   loader: async ({ deps }) => {
-    const result = await listPromptsAdminFn({
-      data: {
-        keyword: deps.keyword,
-        model: deps.model,
-        status: deps.status,
-        page: deps.page,
-      },
-    })
+    const [result, categories] = await Promise.all([
+      listPromptsAdminFn({
+        data: {
+          keyword: deps.keyword,
+          model: deps.model,
+          category: deps.category,
+          status: deps.status,
+          starred: deps.starred,
+          page: deps.page,
+        },
+      }),
+      listCategoriesAdminFn({ data: {} }),
+    ])
     return {
       prompts: result.items,
       pagination: result.pagination,
+      categoryFilterOptions: buildCategoryFilterOptions(categories),
     }
   },
   component: AdminPromptsPage,
 })
 
 function AdminPromptsPage() {
-  const { prompts, pagination } = Route.useLoaderData()
+  const { prompts, pagination, categoryFilterOptions } = Route.useLoaderData()
   const search = Route.useSearch()
   const navigate = Route.useNavigate()
   const [keyword, setKeyword] = useState(search.keyword ?? '')
   const [model, setModel] = useState(search.model ?? 'all')
+  const [category, setCategory] = useState(
+    search.category != null ? String(search.category) : 'all',
+  )
   const [status, setStatus] = useState(search.status ?? 'all')
+  const [starred, setStarred] = useState(search.starred ?? 'all')
 
   useEffect(() => {
     setKeyword(search.keyword ?? '')
     setModel(search.model ?? 'all')
+    setCategory(search.category != null ? String(search.category) : 'all')
     setStatus(search.status ?? 'all')
-  }, [search.keyword, search.model, search.status])
+    setStarred(search.starred ?? 'all')
+  }, [search.keyword, search.model, search.category, search.status, search.starred])
 
   const handleSearch = (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault()
@@ -73,7 +101,14 @@ function AdminPromptsPage() {
       search: {
         keyword: keyword.trim() || undefined,
         model: model === 'all' ? undefined : model,
+        category:
+          category === 'all'
+            ? undefined
+            : category === NO_CATEGORY_VALUE
+              ? NO_CATEGORY_VALUE
+              : Number(category),
         status: status === 'all' ? undefined : (status as 'published' | 'draft'),
+        starred: starred === 'starred' ? 'starred' : undefined,
         page: undefined,
       },
     })
@@ -82,9 +117,18 @@ function AdminPromptsPage() {
   const handleReset = () => {
     setKeyword('')
     setModel('all')
+    setCategory('all')
     setStatus('all')
+    setStarred('all')
     navigate({
-      search: { keyword: undefined, model: undefined, status: undefined, page: undefined },
+      search: {
+        keyword: undefined,
+        model: undefined,
+        category: undefined,
+        status: undefined,
+        starred: undefined,
+        page: undefined,
+      },
     })
   }
 
@@ -117,70 +161,112 @@ function AdminPromptsPage() {
       contentClassName='space-y-6 p-6'
     >
       <form onSubmit={handleSearch} className='border-border bg-card rounded-xl border p-4'>
-        <div className='flex flex-col gap-4 lg:flex-row lg:items-center'>
-          <div className='flex flex-1 flex-col gap-4 sm:flex-row sm:items-center'>
-            <div className='flex min-w-0 flex-1 items-center gap-3'>
-              <Label htmlFor='keyword' className='text-muted-foreground w-14 shrink-0 text-right'>
-                关键词
-              </Label>
-              <Input
-                id='keyword'
-                name='keyword'
-                value={keyword}
-                onChange={(e) => setKeyword(e.target.value)}
-                placeholder='搜索标题、标签或 Prompt 内容'
-                className='min-w-0 flex-1'
-              />
-            </div>
-
-            <div className='flex w-full items-center gap-3 sm:w-auto'>
-              <Label htmlFor='model' className='text-muted-foreground w-14 shrink-0 text-right'>
-                模型
-              </Label>
-              <Select
-                value={model}
-                items={MODEL_FILTER_SELECT_ITEMS}
-                onValueChange={(value) => setModel(value ?? 'all')}
-              >
-                <SelectTrigger id='model' className='w-full sm:w-44'>
-                  <SelectValue placeholder='全部模型' />
-                </SelectTrigger>
-                <SelectContent>
-                  {MODEL_FILTER_SELECT_ITEMS.map((item) => (
-                    <SelectItem key={item.value} value={item.value}>
-                      {item.label}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            </div>
-
-            <div className='flex w-full items-center gap-3 sm:w-auto'>
-              <Label htmlFor='status' className='text-muted-foreground w-14 shrink-0 text-right'>
-                状态
-              </Label>
-              <Select
-                value={status}
-                items={[
-                  { value: 'all', label: '全部状态' },
-                  { value: 'published', label: '已发布' },
-                  { value: 'draft', label: '草稿' },
-                ]}
-                onValueChange={(value) => setStatus(value ?? 'all')}
-              >
-                <SelectTrigger id='status' className='w-full sm:w-36'>
-                  <SelectValue placeholder='全部状态' />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value='all'>全部状态</SelectItem>
-                  <SelectItem value='published'>已发布</SelectItem>
-                  <SelectItem value='draft'>草稿</SelectItem>
-                </SelectContent>
-              </Select>
-            </div>
+        <div className={FILTER_FORM_GRID_CLASS}>
+          <div className={FILTER_FIELD_CLASS}>
+            <Label htmlFor='keyword' className={FILTER_LABEL_CLASS}>
+              关键词
+            </Label>
+            <Input
+              id='keyword'
+              name='keyword'
+              className='min-w-0 flex-1'
+              value={keyword}
+              onChange={(e) => setKeyword(e.target.value)}
+              placeholder='搜索标题、标签或 Prompt 内容'
+            />
           </div>
 
-          <div className='flex shrink-0 gap-2 lg:ml-2'>
+          <div className={FILTER_FIELD_CLASS}>
+            <Label htmlFor='model' className={FILTER_LABEL_CLASS}>
+              模型
+            </Label>
+            <Select
+              value={model}
+              items={MODEL_FILTER_SELECT_ITEMS}
+              onValueChange={(value) => setModel(value ?? 'all')}
+            >
+              <SelectTrigger id='model' className='min-w-0 flex-1'>
+                <SelectValue placeholder='全部模型' />
+              </SelectTrigger>
+              <SelectContent>
+                {MODEL_FILTER_SELECT_ITEMS.map((item) => (
+                  <SelectItem key={item.value} value={item.value}>
+                    {item.label}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </div>
+
+          <div className={FILTER_FIELD_CLASS}>
+            <Label htmlFor='category' className={FILTER_LABEL_CLASS}>
+              分类
+            </Label>
+            <Select
+              value={category}
+              items={categoryFilterOptions}
+              onValueChange={(value) => setCategory(value ?? 'all')}
+            >
+              <SelectTrigger id='category' className='min-w-0 flex-1'>
+                <SelectValue placeholder='全部分类' />
+              </SelectTrigger>
+              <SelectContent>
+                {categoryFilterOptions.map((item) => (
+                  <SelectItem key={item.value} value={item.value}>
+                    {item.label}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </div>
+
+          <div className={FILTER_FIELD_CLASS}>
+            <Label htmlFor='status' className={FILTER_LABEL_CLASS}>
+              状态
+            </Label>
+            <Select
+              value={status}
+              items={[
+                { value: 'all', label: '全部状态' },
+                { value: 'published', label: '已发布' },
+                { value: 'draft', label: '草稿' },
+              ]}
+              onValueChange={(value) => setStatus(value ?? 'all')}
+            >
+              <SelectTrigger id='status' className='min-w-0 flex-1'>
+                <SelectValue placeholder='全部状态' />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value='all'>全部状态</SelectItem>
+                <SelectItem value='published'>已发布</SelectItem>
+                <SelectItem value='draft'>草稿</SelectItem>
+              </SelectContent>
+            </Select>
+          </div>
+
+          <div className={FILTER_FIELD_CLASS}>
+            <Label htmlFor='starred' className={FILTER_LABEL_CLASS}>
+              星标
+            </Label>
+            <Select
+              value={starred}
+              items={[
+                { value: 'all', label: '全部' },
+                { value: 'starred', label: '只看星标' },
+              ]}
+              onValueChange={(value) => setStarred(value ?? 'all')}
+            >
+              <SelectTrigger id='starred' className='min-w-0 flex-1'>
+                <SelectValue placeholder='全部' />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value='all'>全部</SelectItem>
+                <SelectItem value='starred'>只看星标</SelectItem>
+              </SelectContent>
+            </Select>
+          </div>
+
+          <div className={FILTER_ACTIONS_CLASS}>
             <Button type='submit' className='min-w-24'>
               <Search data-icon='inline-start' />
               查询
@@ -194,12 +280,14 @@ function AdminPromptsPage() {
 
       <div className='border-border bg-card overflow-hidden rounded-xl border'>
         <div className='overflow-x-auto'>
-          <table className='w-full min-w-[1080px] table-fixed text-left text-sm'>
+          <table className='w-full min-w-[1260px] table-fixed text-left text-sm'>
             <colgroup>
               <col className='w-16' />
-              <col className='w-[420px]' />
+              <col className='w-[340px]' />
               <col className='w-36' />
+              <col className='w-28' />
               <col className='w-32' />
+              <col className='w-20' />
               <col className='w-20' />
               <col className='w-36' />
               <col className='w-40' />
@@ -210,8 +298,10 @@ function AdminPromptsPage() {
                 <th className='px-4 py-3 font-medium whitespace-nowrap'>ID</th>
                 <th className='px-4 py-3 font-medium whitespace-nowrap'>标题</th>
                 <th className='px-4 py-3 font-medium whitespace-nowrap'>模型</th>
+                <th className='px-4 py-3 font-medium whitespace-nowrap'>分类</th>
                 <th className='px-4 py-3 font-medium whitespace-nowrap'>标签</th>
                 <th className='px-4 py-3 font-medium whitespace-nowrap'>图片</th>
+                <th className='px-4 py-3 font-medium whitespace-nowrap'>复制</th>
                 <th className='px-4 py-3 font-medium whitespace-nowrap'>状态</th>
                 <th className='px-4 py-3 font-medium whitespace-nowrap'>创建时间</th>
                 <th className='bg-muted sticky right-0 z-20 px-4 py-3 font-medium whitespace-nowrap shadow-[-12px_0_18px_-18px_rgba(0,0,0,0.8)]'>
@@ -222,7 +312,7 @@ function AdminPromptsPage() {
             <tbody>
               {prompts.length === 0 ? (
                 <tr>
-                  <td colSpan={8} className='text-muted-foreground px-4 py-12 text-center'>
+                  <td colSpan={10} className='text-muted-foreground px-4 py-12 text-center'>
                     暂无数据，试试调整筛选条件或新建 Prompt
                   </td>
                 </tr>
@@ -231,14 +321,29 @@ function AdminPromptsPage() {
                   <tr key={prompt.id} className='border-border/70 border-b last:border-0'>
                     <td className='text-muted-foreground px-4 py-3'>{prompt.id}</td>
                     <td className='px-4 py-3'>
-                      <div className='w-full min-w-0'>
-                        <p className='truncate font-medium'>{prompt.title}</p>
-                        <p className='text-muted-foreground mt-1 truncate text-xs'>
-                          {prompt.prompt}
-                        </p>
+                      <div className='flex min-w-0 items-start gap-2'>
+                        <PromptStarButton
+                          promptId={prompt.id}
+                          starred={prompt.starred}
+                          admin
+                          className='mt-0.5'
+                        />
+                        <div className='min-w-0'>
+                          <p className='truncate font-medium'>{prompt.title}</p>
+                          <p className='text-muted-foreground mt-1 truncate text-xs'>
+                            {prompt.prompt}
+                          </p>
+                        </div>
                       </div>
                     </td>
                     <td className='px-4 py-3 whitespace-nowrap'>{getModelLabel(prompt.model)}</td>
+                    <td className='px-4 py-3 whitespace-nowrap'>
+                      {prompt.categoryName ? (
+                        <Badge variant='outline'>{prompt.categoryName}</Badge>
+                      ) : (
+                        <span className='text-muted-foreground'>未分类</span>
+                      )}
+                    </td>
                     <td className='px-4 py-3'>
                       <div className='flex max-w-[180px] flex-wrap gap-1'>
                         {parsePromptTags(prompt.tags).length > 0 ? (
@@ -255,6 +360,7 @@ function AdminPromptsPage() {
                       </div>
                     </td>
                     <td className='px-4 py-3 whitespace-nowrap'>{prompt.images.length}</td>
+                    <td className='px-4 py-3 whitespace-nowrap'>{prompt.copy_count}</td>
                     <td className='px-4 py-3'>
                       <PromptDraftSwitch promptId={prompt.id} draft={prompt.draft} />
                     </td>

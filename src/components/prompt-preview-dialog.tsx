@@ -1,12 +1,15 @@
+import { useServerFn } from '@tanstack/react-start'
 import { Check, ChevronLeft, ChevronRight, Copy, ImageIcon, Share2 } from 'lucide-react'
 import { useEffect, useState } from 'react'
 
+import { PromptStarButton } from '@/components/prompt-star-button'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
 import { Dialog, DialogContent, DialogTitle } from '@/components/ui/dialog'
 import { Separator } from '@/components/ui/separator'
 import { getModelLabel } from '@/lib/models'
 import { parsePromptTags } from '@/lib/prompt-tags'
+import { recordPromptCopyFn } from '@/lib/prompts.functions'
 import { cn } from '@/lib/utils'
 
 export function formatPromptForCopy(prompt: string, negativePrompt: string | null): string {
@@ -27,6 +30,8 @@ export type GalleryPrompt = {
   negative_prompt: string | null
   model: string
   tags: string | null
+  starred: boolean
+  copy_count: number
   images: { id: number; url: string; thumbnailUrl?: string; sort_order: number | null }[]
 }
 
@@ -67,6 +72,7 @@ function toAbsoluteUrl(url: string) {
 }
 
 export function PromptPreviewContent({ prompt, className, shareUrl }: PromptPreviewContentProps) {
+  const recordCopy = useServerFn(recordPromptCopyFn)
   const [activeIndex, setActiveIndex] = useState(0)
   const [copied, setCopied] = useState(false)
   const [shareCopied, setShareCopied] = useState(false)
@@ -94,6 +100,7 @@ export function PromptPreviewContent({ prompt, className, shareUrl }: PromptPrev
     try {
       await navigator.clipboard.writeText(text)
       setCopied(true)
+      await recordCopy({ data: prompt.id })
     } catch {
       setCopied(false)
     }
@@ -206,7 +213,15 @@ export function PromptPreviewContent({ prompt, className, shareUrl }: PromptPrev
 
       <div className='flex min-h-0 flex-col overflow-hidden'>
         <div className='shrink-0 space-y-3 px-6 pt-6 pr-14'>
-          <h2 className='pr-2 text-xl font-semibold tracking-tight'>{prompt.title}</h2>
+          <div className='flex items-start justify-between gap-3'>
+            <h2 className='min-w-0 pr-2 text-xl font-semibold tracking-tight'>{prompt.title}</h2>
+            <PromptStarButton
+              promptId={prompt.id}
+              starred={prompt.starred}
+              className='mt-0.5'
+              stopPropagation={false}
+            />
+          </div>
           <div className='flex flex-wrap items-center gap-2'>
             <Badge variant='secondary'>{getModelLabel(prompt.model)}</Badge>
             {tags?.map((tag) => (

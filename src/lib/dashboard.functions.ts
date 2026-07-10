@@ -16,6 +16,8 @@ export type DashboardStats = {
     promptsLast7Days: number
     promptsLast30Days: number
     avgImagesPerPrompt: number
+    copies: number
+    starred: number
   }
   modelDistribution: { model: string; label: string; count: number }[]
   creationTrend: { date: string; label: string; count: number }[]
@@ -68,6 +70,8 @@ export const getDashboardStatsFn = createServerFn({ method: 'GET' })
             promptsLast7Days: 0,
             promptsLast30Days: 0,
             avgImagesPerPrompt: 0,
+            copies: 0,
+            starred: 0,
           },
           modelDistribution: [],
           creationTrend: buildCreationTrend([]),
@@ -81,46 +85,57 @@ export const getDashboardStatsFn = createServerFn({ method: 'GET' })
       const last30Days = subDays(now, 30)
       const trendStart = subDays(startOfDay(now), 13)
 
-      const [promptCountRow] = await db.select({ count: count() }).from(prompts)
-      const [imageCountRow] = await db.select({ count: count() }).from(prompt_images)
-      const [last7DaysRow] = await db
-        .select({ count: count() })
-        .from(prompts)
-        .where(gte(prompts.created_at, last7Days))
-      const [last30DaysRow] = await db
-        .select({ count: count() })
-        .from(prompts)
-        .where(gte(prompts.created_at, last30Days))
-
-      const modelRows = await db
-        .select({
-          model: prompts.model,
-          count: count(),
-        })
-        .from(prompts)
-        .groupBy(prompts.model)
-        .orderBy(desc(count()))
-
-      const trendRows = await db
-        .select({ created_at: prompts.created_at })
-        .from(prompts)
-        .where(gte(prompts.created_at, trendStart))
-
-      const tagRows = await db
-        .select({ tags: prompts.tags })
-        .from(prompts)
-        .where(and(isNotNull(prompts.tags), ne(prompts.tags, '')))
-
-      const recentRows = await db
-        .select({
-          id: prompts.id,
-          title: prompts.title,
-          model: prompts.model,
-          created_at: prompts.created_at,
-        })
-        .from(prompts)
-        .orderBy(desc(prompts.created_at))
-        .limit(5)
+      const [
+        [promptCountRow],
+        [imageCountRow],
+        promptStatsRows,
+        [last7DaysRow],
+        [last30DaysRow],
+        modelRows,
+        trendRows,
+        tagRows,
+        recentRows,
+      ] = await db.batch([
+        db.select({ count: count() }).from(prompts),
+        db.select({ count: count() }).from(prompt_images),
+        db
+          .select({ copy_count: prompts.copy_count, starred: prompts.starred })
+          .from(prompts),
+        db
+          .select({ count: count() })
+          .from(prompts)
+          .where(gte(prompts.created_at, last7Days)),
+        db
+          .select({ count: count() })
+          .from(prompts)
+          .where(gte(prompts.created_at, last30Days)),
+        db
+          .select({
+            model: prompts.model,
+            count: count(),
+          })
+          .from(prompts)
+          .groupBy(prompts.model)
+          .orderBy(desc(count())),
+        db
+          .select({ created_at: prompts.created_at })
+          .from(prompts)
+          .where(gte(prompts.created_at, trendStart)),
+        db
+          .select({ tags: prompts.tags })
+          .from(prompts)
+          .where(and(isNotNull(prompts.tags), ne(prompts.tags, ''))),
+        db
+          .select({
+            id: prompts.id,
+            title: prompts.title,
+            model: prompts.model,
+            created_at: prompts.created_at,
+          })
+          .from(prompts)
+          .orderBy(desc(prompts.created_at))
+          .limit(5),
+      ])
 
       const recentIds = recentRows.map((row) => row.id)
       const imageCountRows =
@@ -151,6 +166,8 @@ export const getDashboardStatsFn = createServerFn({ method: 'GET' })
 
       const totalPrompts = promptCountRow?.count ?? 0
       const totalImages = imageCountRow?.count ?? 0
+      const totalCopies = promptStatsRows.reduce((sum, row) => sum + row.copy_count, 0)
+      const totalStarred = promptStatsRows.filter((row) => row.starred).length
 
       return {
         totals: {
@@ -160,6 +177,8 @@ export const getDashboardStatsFn = createServerFn({ method: 'GET' })
           promptsLast30Days: last30DaysRow?.count ?? 0,
           avgImagesPerPrompt:
             totalPrompts > 0 ? Math.round((totalImages / totalPrompts) * 10) / 10 : 0,
+          copies: totalCopies,
+          starred: totalStarred,
         },
         modelDistribution: modelRows.map((row) => ({
           model: row.model,

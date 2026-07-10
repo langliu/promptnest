@@ -1,6 +1,6 @@
 import { createFileRoute, Link } from '@tanstack/react-router'
 import { format } from 'date-fns'
-import { FileText, ImageIcon, Layers, TrendingUp } from 'lucide-react'
+import { Copy, FileText, ImageIcon, Star } from 'lucide-react'
 
 import { AdminPageHeader, AdminPageShell } from '@/components/admin/admin-page-shell'
 import { DashboardChartsLazy } from '@/components/admin/dashboard-charts-lazy'
@@ -33,18 +33,18 @@ const statCards = [
     hint: (stats: DashboardStats) => `平均每条 ${stats.totals.avgImagesPerPrompt} 张`,
   },
   {
-    key: 'week',
-    label: '近 7 天新增',
-    icon: TrendingUp,
-    getValue: (stats: DashboardStats) => stats.totals.promptsLast7Days,
-    hint: (stats: DashboardStats) => `近 30 天共 ${stats.totals.promptsLast30Days} 条`,
+    key: 'copies',
+    label: '复制总次数',
+    icon: Copy,
+    getValue: (stats: DashboardStats) => stats.totals.copies,
+    hint: (stats: DashboardStats) => `近 30 天新增 ${stats.totals.promptsLast30Days} 条`,
   },
   {
-    key: 'models',
-    label: '使用模型数',
-    icon: Layers,
-    getValue: (stats: DashboardStats) => stats.modelDistribution.length,
-    hint: () => '覆盖全部已记录模型',
+    key: 'starred',
+    label: '星标 Prompt',
+    icon: Star,
+    getValue: (stats: DashboardStats) => stats.totals.starred,
+    hint: (stats: DashboardStats) => `近 7 天新增 ${stats.totals.promptsLast7Days}`,
   },
 ] as const
 

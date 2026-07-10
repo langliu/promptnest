@@ -1,74 +1,10 @@
 import { drizzle, type DrizzleD1Database } from 'drizzle-orm/d1'
 
-let schemaReady: Promise<void> | null = null
-
 export async function getDb(): Promise<DrizzleD1Database | null> {
   const { env } = await import('cloudflare:workers')
   if (!env.DB) return null
 
-  const db = drizzle(env.DB)
-  await ensureSchema(env.DB)
-  return db
-}
-
-async function ensureSchema(d1: D1Database) {
-  if (!schemaReady) {
-    schemaReady = initSchema(d1)
-  }
-  await schemaReady
-}
-
-async function initSchema(d1: D1Database) {
-  const table = await d1
-    .prepare("SELECT name FROM sqlite_master WHERE type = 'table' AND name = 'prompts'")
-    .first<{ name: string }>()
-
-  if (table) {
-    await ensureDraftColumn(d1)
-    await ensureThumbnailColumn(d1)
-    return
-  }
-
-  await d1.batch([
-    d1.prepare(`CREATE TABLE IF NOT EXISTS prompt_images (
-      id integer PRIMARY KEY AUTOINCREMENT NOT NULL,
-      prompt_id integer NOT NULL,
-      r2_key text NOT NULL,
-      thumbnail_r2_key text,
-      sort_order integer DEFAULT 0,
-      created_at integer NOT NULL
-    )`),
-    d1.prepare(`CREATE TABLE IF NOT EXISTS prompts (
-      id integer PRIMARY KEY AUTOINCREMENT NOT NULL,
-      title text NOT NULL,
-      prompt text NOT NULL,
-      negative_prompt text,
-      model text NOT NULL,
-      parameters text,
-      tags text,
-      draft integer DEFAULT 1 NOT NULL,
-      created_at integer NOT NULL,
-      updated_at integer NOT NULL
-    )`),
-  ])
-}
-
-async function ensureDraftColumn(d1: D1Database) {
-  const columns = await d1.prepare('PRAGMA table_info(prompts)').all<{ name: string }>()
-
-  const hasDraft = columns.results?.some((column) => column.name === 'draft')
-  if (hasDraft) return
-
-  await d1.prepare('ALTER TABLE prompts ADD COLUMN draft integer NOT NULL DEFAULT 0').run()
-}
-
-async function ensureThumbnailColumn(d1: D1Database) {
-  const columns = await d1.prepare('PRAGMA table_info(prompt_images)').all<{ name: string }>()
-
-  const hasThumbnailKey = columns.results?.some((column) => column.name === 'thumbnail_r2_key')
-  if (hasThumbnailKey) return
-
-  await d1.prepare('ALTER TABLE prompt_images ADD COLUMN thumbnail_r2_key text').run()
+  return drizzle(env.DB)
 }
 
 export function formatDbError(error: unknown): string {

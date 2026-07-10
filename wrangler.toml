@@ -17,3 +17,13 @@ preview_bucket_name = "promptnest-images-preview"
 
 # 本地开发在 .dev.vars 中设置 AUTH_PASSWORD 和 SESSION_SECRET
 # 生产环境使用: wrangler secret put AUTH_PASSWORD && wrangler secret put SESSION_SECRET
+
+[observability]
+enabled = true
+
+[observability.logs]
+head_sampling_rate = 1
+
+[observability.traces]
+enabled = true
+head_sampling_rate = 0.01

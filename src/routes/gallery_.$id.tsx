@@ -39,7 +39,11 @@ function GalleryPromptPage() {
         </Button>
 
         <div className='border-border bg-card h-[min(78vh,46rem)] min-h-0 overflow-hidden rounded-xl border'>
-          <PromptPreviewContent prompt={prompt} className='h-full' />
+          <PromptPreviewContent
+            prompt={prompt}
+            className='h-full'
+            shareUrl={`/gallery/${prompt.id}`}
+          />
         </div>
       </div>
     </div>

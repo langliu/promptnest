@@ -22,6 +22,20 @@
       "when": 1782956400000,
       "tag": "0002_add_prompt_image_thumbnail",
       "breakpoints": true
+    },
+    {
+      "idx": 3,
+      "version": "6",
+      "when": 1783664586408,
+      "tag": "0003_colorful_scarlet_witch",
+      "breakpoints": true
+    },
+    {
+      "idx": 4,
+      "version": "6",
+      "when": 1783665258769,
+      "tag": "0004_worried_wendell_vaughn",
+      "breakpoints": true
     }
   ]
 }

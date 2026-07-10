@@ -7,11 +7,13 @@ const MAX_VISIBLE_TAGS = 3
 
 export function GalleryCardTags({
   model,
+  categoryName,
   tags,
   className,
   overlay = false,
 }: {
   model: string
+  categoryName?: string | null
   tags: string | null
   className?: string
   overlay?: boolean
@@ -30,6 +32,11 @@ export function GalleryCardTags({
         className,
       )}
     >
+      {categoryName && (
+        <Badge variant={overlay ? 'outline' : 'secondary'} className={badgeClass}>
+          {categoryName}
+        </Badge>
+      )}
       <Badge variant={overlay ? 'outline' : 'secondary'} className={badgeClass}>
         {getModelLabel(model)}
       </Badge>

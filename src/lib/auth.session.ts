@@ -26,13 +26,13 @@ async function hmacSign(secret: string, payload: string): Promise<string> {
   return btoa(String.fromCharCode(...new Uint8Array(signature)))
 }
 
-function timingSafeEqual(a: string, b: string): boolean {
-  if (a.length !== b.length) return false
-  let result = 0
-  for (let i = 0; i < a.length; i++) {
-    result |= a.charCodeAt(i) ^ b.charCodeAt(i)
-  }
-  return result === 0
+async function timingSafeEqual(a: string, b: string): Promise<boolean> {
+  const encoder = new TextEncoder()
+  const [aHash, bHash] = await Promise.all([
+    crypto.subtle.digest('SHA-256', encoder.encode(a)),
+    crypto.subtle.digest('SHA-256', encoder.encode(b)),
+  ])
+  return crypto.subtle.timingSafeEqual(aHash, bHash)
 }
 
 export async function createSessionToken(secret: string): Promise<string> {
@@ -41,7 +41,7 @@ export async function createSessionToken(secret: string): Promise<string> {
 
 export async function verifySessionToken(secret: string, token: string): Promise<boolean> {
   const expected = await createSessionToken(secret)
-  return timingSafeEqual(expected, token)
+  return await timingSafeEqual(expected, token)
 }
 
 export function setSessionCookie(token: string) {
